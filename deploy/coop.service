@@ -29,6 +29,7 @@ ProtectControlGroups=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=yes
 LockPersonality=yes
+# Safe: SQLite is wasm2go-translated Go (no JIT, no wazero); checked by running under PR_SET_MDWE.
 MemoryDenyWriteExecute=yes
 SystemCallArchitectures=native
 CapabilityBoundingSet=

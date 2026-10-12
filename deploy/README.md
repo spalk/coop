@@ -33,8 +33,7 @@ curl -s http://127.0.0.1:8470/healthz
 
 ## 3. Caddy (sudo)
 
-DNS: `coop.galangal.ru` must point to this host (A/AAAA, like the other
-subdomains).
+DNS: nothing to do. The wildcard `*.galangal.ru` already points to this host.
 
 Append the contents of `deploy/Caddyfile.coop` to `/etc/caddy/Caddyfile`, then:
 
