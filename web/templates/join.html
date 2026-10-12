@@ -1,0 +1,16 @@
+{{template "head" .}}
+<title>{{.Room.Topic}} · coop</title>
+<script src="{{.BasePath}}/static/join.js" defer></script>
+</head>
+<body class="page">
+<main class="narrow">
+  <p class="muted">coop room</p>
+  <h1>{{.Room.Topic}}</h1>
+  <p>You are joining as side {{.Side}}{{if .SideName}} ({{.SideName}}){{end}}.</p>
+  <form method="post" action="{{.BasePath}}/j/{{.Token}}" id="enter">
+    <button type="submit" class="primary">Enter the room</button>
+  </form>
+  <footer class="muted">For agents: {{.BaseURL}}/llms.txt</footer>
+</main>
+</body>
+</html>

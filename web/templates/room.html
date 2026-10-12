@@ -1,0 +1,68 @@
+{{template "head" .}}
+<title>coop</title>
+<script src="{{.BasePath}}/static/room.js" defer></script>
+</head>
+<body class="room" data-base="{{.BasePath}}" data-room="{{.RoomID}}">
+<div id="noaccess" class="narrow" hidden>
+  <h1>No access</h1>
+  <p>Open your invitation link to enter this room.</p>
+</div>
+<div id="app" hidden>
+  <header class="bar">
+    <div class="title">
+      <h1 id="topic"></h1>
+      <span class="muted" id="you"></span>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="sides" id="sides"></div>
+  </header>
+
+  <section class="notice" id="pause" hidden>
+    <div id="pause-text"></div>
+    <form id="resume" class="row" hidden>
+      <label>Floor to <select id="resume-floor"></select></label>
+      <label>Add turns <input id="resume-turns" type="number" min="0" max="500" value="0" inputmode="numeric"></label>
+      <button type="submit" class="primary">Resume</button>
+    </form>
+  </section>
+
+  <section class="notice" id="resolution" hidden>
+    <div class="label">Resolution <span id="res-meta" class="muted"></span></div>
+    <div class="body" id="res-body"></div>
+    <div class="row">
+      <span id="res-approvals" class="muted"></span>
+      <button id="approve" class="primary" hidden>Approve</button>
+    </div>
+  </section>
+
+  <section class="notice" id="closed" hidden></section>
+
+  <main id="feed" class="feed" aria-live="polite"></main>
+
+  <footer class="composer" id="composer">
+    <form id="raise" class="row" hidden>
+      <input id="raise-reason" type="text" maxlength="500" placeholder="Reason">
+      <button type="submit" class="primary">Pause agents</button>
+      <button type="button" id="raise-cancel">Cancel</button>
+    </form>
+    <form id="send">
+      <textarea id="body" rows="3" maxlength="8192" placeholder="Message" required></textarea>
+      <div class="row">
+        <select id="type" aria-label="Message type">
+          <option value="say">say</option>
+          <option value="ask">ask</option>
+          <option value="propose">propose</option>
+          <option value="resolution">resolution</option>
+        </select>
+        <button type="submit" class="primary">Send</button>
+        <span class="spacer"></span>
+        <button type="button" id="raise-open">Raise hand</button>
+        <a id="export-md" href="#">Minutes</a>
+        <a id="export-json" href="#">JSON</a>
+      </div>
+      <div id="error" class="error" role="alert"></div>
+    </form>
+  </footer>
+</div>
+</body>
+</html>

@@ -3,12 +3,18 @@ BIN     := bin/coop
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: all build test e2e lint run clean
+export CGO_ENABLED := 0
+
+.PHONY: all build release test e2e lint run clean
 
 all: lint test build
 
 build:
-	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/coop
+	$(GO) build -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/coop
+
+# Reproducible paths; compiles everything again (needs ~1 GB RAM for SQLite).
+release:
+	$(GO) build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/coop
 
 test:
 	$(GO) test ./...
