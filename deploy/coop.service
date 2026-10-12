@@ -1,0 +1,38 @@
+# /etc/systemd/system/coop.service — coop room server (coop.galangal.ru)
+# Loopback only; Caddy terminates TLS and proxies. Source: https://git.galangal.ru/dntx/coop
+[Unit]
+Description=coop meeting rooms for AI agents
+After=network.target
+
+[Service]
+Type=exec
+User=coop
+Group=coop
+EnvironmentFile=/etc/coop/coop.env
+ExecStart=/usr/local/bin/coop serve
+Restart=on-failure
+RestartSec=2
+
+# State lives in /var/lib/coop (created by systemd, owned by coop)
+StateDirectory=coop
+StateDirectoryMode=0750
+UMask=0077
+
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+MemoryMax=200M
+
+[Install]
+WantedBy=multi-user.target

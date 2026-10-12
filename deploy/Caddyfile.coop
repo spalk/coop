@@ -1,0 +1,27 @@
+# coop — block for /etc/caddy/Caddyfile
+# Meeting rooms for AI agents; the service listens on loopback only.
+# Invitation links carry the side token in the path (/j/coop_...): the log
+# filter replaces it, so tokens never land in the access log. Authorization
+# and Cookie headers are redacted by Caddy by default.
+coop.galangal.ru {
+	reverse_proxy 127.0.0.1:8470
+	log {
+		output file /var/log/caddy/coop-access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+		format filter {
+			wrap json
+			request>uri regexp "coop_[a-z0-9]+" "coop_REDACTED"
+		}
+	}
+}
+
+# Fallback if the network of a participant blocks new subdomains: serve under
+# a path of an existing site. Put the handle block inside that site and set
+# COOP_BASE_URL=https://<existing site>/coop in /etc/coop/coop.env.
+# (handle, not handle_path: coop strips its base path itself.)
+#
+#   handle /coop* {
+#       reverse_proxy 127.0.0.1:8470
+#   }

@@ -21,20 +21,35 @@ Remote: https://git.galangal.ru/dntx/coop.git (later GitHub, open source).
 - Web assets embedded with `embed`; no frontend framework.
 
 ## Commands
-- `make build` / `make test` / `make lint` / `make e2e` (e2e starts a server on a
-  free 127.0.0.1 port and kills it at the end).
+- `make` is NOT installed on this host. Use Go directly (same as the Makefile):
+  `export PATH=$HOME/.local/go/bin:$PATH`
+  `go test ./...` · `gofmt -l . && go vet ./...` ·
+  `CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/coop ./cmd/coop` ·
+  `scripts/e2e.sh bin/coop` (starts a server on a free 127.0.0.1 port, kills it at the end).
+- First compile of the SQLite package: ~80 s, ~940 MB RSS. It is cached afterwards;
+  do not clear the Go build cache, do not add `-trimpath` to dev builds (new cache key).
+- No node/browser on this host: room.js is not checked by tooling here.
 - Admin CLI: `bin/coop key add|list|revoke`, `bin/coop rooms list|delete`,
   `bin/coop purge`. All take `--db`.
 
 ## Layout
 - `cmd/coop` — CLI entry (serve + admin).
-- `internal/store` — SQLite schema and queries.
-- `internal/room` — room rules (floor, pause, budget, approval) on top of the store.
+- `internal/room` — SQLite schema/store and room rules (floor, pause, budget,
+  approval, tokens, minutes). `rules.go` is the heart; `mutate()` handles expiry.
 - `internal/server` — HTTP API, long-poll, SSE, web page, llms.txt.
-- `web/` — embedded page, CSS, JS, llms.txt template.
+- `web/` — embedded templates, static CSS/JS, llms.txt template (text/template, `{{.BaseURL}}`).
+- `scripts/e2e.sh` — curl scenario: two agents + two humans.
 - `deploy/` — Caddy block, systemd unit, instructions (deployment is done by the user).
 - `docs/` — protocol, API, self-hosting, research.
 
 ## Pitfalls
+- Human vs agent inside a side is by channel (cookie vs Bearer), same token. An agent
+  could open the join link and act as a human; llms.txt forbids it. Protects the other
+  side, not against one's own agent.
+- `GET /j/<token>` must not create a session (link previews); browsers enter via
+  auto-submitted `POST /j/<token>` (static/join.js; CSP forbids inline scripts).
+- Do not set `ReadTimeout` on http.Server: it cancels long-poll contexts.
+- Cookie-auth POSTs must be JSON (CSRF defence together with SameSite=Strict).
+- `[hidden]{display:none !important}` in app.css is needed: flex/grid classes override `hidden`.
 - The bus/shell running agents caps a command at 10 minutes, hence `wait` max 540 s.
 - Base path: the server can run under a path prefix (`--base-url https://host/coop`).

@@ -63,9 +63,11 @@ func (s *Server) getRoom(w http.ResponseWriter, r *http.Request, p room.Principa
 }
 
 func parseAfter(r *http.Request) (int64, error) {
-	v := r.URL.Query().Get("after")
+	// An EventSource reconnecting sends Last-Event-ID; it is newer than the
+	// after of the URL it was opened with.
+	v := r.Header.Get("Last-Event-ID")
 	if v == "" {
-		v = r.Header.Get("Last-Event-ID")
+		v = r.URL.Query().Get("after")
 	}
 	if v == "" {
 		return 0, nil
