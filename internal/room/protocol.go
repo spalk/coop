@@ -180,7 +180,9 @@ func buildProtocol(st Status, evs []Event) Protocol {
 			}
 			line(e, "phase", text)
 		case EventReady:
-			line(e, "ready", side(e.Side)+" is ready to negotiate")
+			line(e, "ready", side(e.Side)+" started the agents")
+		case EventUnready:
+			line(e, "ready", side(e.Side)+" withdrew the start")
 		case EventPaused:
 			text := side(e.Side) + " " + e.Actor + " raised a hand"
 			if num(e, "kind") == PauseBudget {

@@ -397,13 +397,25 @@ func TestBriefing(t *testing.T) {
 	if st := f.status(); st.Phase != PhaseBriefing {
 		t.Fatal("negotiation started with one side ready")
 	}
+	// A withdraws its start: B alone does not start the agents.
+	wantCode(t, f.s.Unready(f.agentA), "humans_only")
+	if err := f.s.Unready(f.humanA); err != nil {
+		t.Fatal(err)
+	}
 	if err := f.s.Ready(f.humanB); err != nil {
+		t.Fatal(err)
+	}
+	if st := f.status(); st.Phase != PhaseBriefing {
+		t.Fatal("negotiation started after A withdrew")
+	}
+	if err := f.s.Ready(f.humanA); err != nil {
 		t.Fatal(err)
 	}
 	st = f.status()
 	if st.Phase != PhaseNegotiation || st.Floor != "A" || st.Charter.Version != 1 {
 		t.Fatalf("after ready: %+v", st)
 	}
+	wantCode(t, f.s.Unready(f.humanA), "wrong_phase")
 }
 
 func TestPauseResumeBudgetPerSide(t *testing.T) {

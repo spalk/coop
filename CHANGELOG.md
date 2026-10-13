@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Briefing: "Ready to negotiate" is now "Start agents" and can be withdrawn
+  (`POST /api/rooms/{id}/unready`, event `unready`) until every side has
+  pressed it.
+- Hover hints on every button of the room page: what happens when it is
+  pressed.
 - Links panel on the room page: one card per side in the side's colour, each
   link labelled with who it is for (human / agent) and a Copy button; errors
   are shown next to the button.

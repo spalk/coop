@@ -109,6 +109,7 @@
     $("briefing-text").textContent = waiting.length ? "Waiting for: " + waiting.join(", ") : "";
     const mine = room.sides.find((s) => s.label === room.you.side);
     $("ready").hidden = !!(mine && mine.ready_at);
+    $("unready").hidden = !(mine && mine.ready_at);
   }
 
   function renderAmendment() {
@@ -197,6 +198,7 @@
     const copy = el("button", "", "Copy");
     copy.type = "button";
     copy.dataset.copy = id;
+    copy.title = "Copy the link to the clipboard";
     head.append(el("span", "tag", role), el("span", "", label), copy);
     const code = el("code", "", url);
     code.id = id;
@@ -206,10 +208,11 @@
 
   // linkButton returns the button with its own error line: the page-wide error
   // sits under the composer, out of sight of this panel.
-  function linkButton(text, reissue, fn) {
+  function linkButton(text, title, reissue, fn) {
     const wrap = el("div", "stack");
     const b = el("button", reissue ? "" : "primary", text);
     b.type = "button";
+    b.title = title;
     const err = el("div", "error");
     err.setAttribute("role", "alert");
     b.addEventListener("click", async () => {
@@ -246,7 +249,8 @@
           card.append(linkRow("link-my-agent", "agent", "For your agent", issued.agent));
         }
         if (!closed) {
-          card.append(linkButton(issued.agent ? "Reissue agent link" : "Create link for your agent", !!issued.agent, async () => {
+          card.append(linkButton(issued.agent ? "Reissue agent link" : "Create link for your agent",
+            "A link your agent opens to join as your side. A new link replaces the previous one.", !!issued.agent, async () => {
             issued.agent = (await call("POST", "/agent-link")).agent_url;
           }));
         }
@@ -261,7 +265,8 @@
         if (entered) {
           card.append(el("p", "muted", "Entered the room. Their links are theirs to manage."));
         } else if (!closed) {
-          card.append(linkButton(pair ? "Reissue links" : "Create links for " + name, !!pair, async () => {
+          card.append(linkButton(pair ? "Reissue links" : "Create links for " + name,
+            "Two links to send to " + name + ": one for them, one for their agent. They work until someone of that side enters; a new pair replaces the previous one.", !!pair, async () => {
             const res = await call("POST", "/sides/" + s.label + "/links");
             issued.sides[s.label] = { human: res.human_url, agent: res.agent_url };
           }));
@@ -280,7 +285,8 @@
       case "claimed": return sideName(e.side) + " accepted the invitation";
       case "joined": return who(e) + " joined";
       case "phase": return "Phase: " + d.to;
-      case "ready": return sideName(e.side) + " is ready to negotiate";
+      case "ready": return sideName(e.side) + " pressed Start agents";
+      case "unready": return sideName(e.side) + " withdrew the start";
       case "paused":
         if (d.kind === "budget") return "Paused: side " + d.side + " used its turn budget";
         return who(e) + " raised a hand" + (e.body ? ": " + e.body : "");
@@ -448,6 +454,7 @@
     });
 
     $("ready").addEventListener("click", guard(() => call("POST", "/ready", {})));
+    $("unready").addEventListener("click", guard(() => call("POST", "/unready", {})));
 
     $("amd-vote").addEventListener("click", guard(async (ev) => {
       const btn = ev.target.closest("[data-accept]");

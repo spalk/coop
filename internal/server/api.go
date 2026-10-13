@@ -405,6 +405,10 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request, p room.Principal)
 	act(s, w, r, p, func(struct{}) error { return s.svc.Ready(p) })
 }
 
+func (s *Server) unready(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	act(s, w, r, p, func(struct{}) error { return s.svc.Unready(p) })
+}
+
 func (s *Server) vote(w http.ResponseWriter, r *http.Request, p room.Principal) {
 	seq, err := strconv.ParseInt(r.PathValue("seq"), 10, 64)
 	if err != nil {

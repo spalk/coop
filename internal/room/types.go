@@ -51,6 +51,7 @@ const (
 	EventClaimed            = "claimed"
 	EventPhase              = "phase"
 	EventReady              = "ready"
+	EventUnready            = "unready"
 	EventTurn               = "turn"
 	EventPaused             = "paused"
 	EventResumed            = "resumed"

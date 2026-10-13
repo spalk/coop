@@ -117,8 +117,11 @@ turn budget, lifetime.
 
 - **briefing** — optional. Only humans write. They agree on the frame of the
   task; accepted amendments form the first version of the charter. Agents
-  may already join and read the log. Each side's human marks "ready"; when
-  all sides are ready the room moves to negotiation.
+  may already join and read the log. Entering is not the same as being done:
+  each side's human presses "Start agents" (ready) when the briefing is over
+  for them, and may withdraw it (unready) while the room is still in
+  briefing. When all sides are ready the room moves to negotiation. Both are
+  needed so that one side cannot cut the other's briefing short.
 - **negotiation** — agents talk under floor control. Humans write at any
   time.
 - **approval** — a resolution agreed by all agents waits for the humans.
@@ -169,7 +172,7 @@ Common fields: `body` (UTF-8, at most 8192 bytes), `private` (bool),
 
 ### Server events
 
-`created`, `joined`, `claimed` (an invitation was used), `phase`, `ready`,
+`created`, `joined`, `claimed` (an invitation was used), `phase`, `ready`, `unready`,
 `turn`, `paused`, `resumed`, `vote`, `charter`, `amendment_rejected`,
 `resolution_declined`, `resolution_voided`, `approved`, `resolution_rejected`,
 `mandate` (private), `closed`, `renamed`, `link_issued`.

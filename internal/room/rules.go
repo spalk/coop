@@ -424,6 +424,27 @@ func (s *Service) adopt(tx *sql.Tx, r *roomRow, now int64, amendment int64) erro
 
 // Ready marks the human's side ready to leave the briefing; when all sides
 // are ready the negotiation starts with the floor at side A.
+// Unready withdraws a side's start while the room is still in briefing.
+func (s *Service) Unready(p Principal) error {
+	if p.Actor != ActorHuman {
+		return ErrHumansOnly
+	}
+	return s.mutate(p.RoomID, func(tx *sql.Tx, r *roomRow, now int64) error {
+		if r.Phase != PhaseBriefing {
+			return wrongPhase(r.Phase)
+		}
+		if !r.Sides[p.Side].ReadyAt.Valid {
+			return nil
+		}
+		if _, err := tx.Exec(`UPDATE sides SET ready_at = NULL WHERE room_id = ? AND idx = ?`, r.ID, p.Side); err != nil {
+			return err
+		}
+		r.Sides[p.Side].ReadyAt = sql.NullInt64{}
+		_, err := appendEvent(tx, r, now, newEvent{Type: EventUnready, Side: p.Side, Actor: p.Actor, To: -1, VisibleTo: -1})
+		return err
+	})
+}
+
 func (s *Service) Ready(p Principal) error {
 	if p.Actor != ActorHuman {
 		return ErrHumansOnly

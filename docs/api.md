@@ -94,7 +94,7 @@ cookie. Cookie-authenticated `POST` and `PUT` requests must have
 
 - `type`: a message type (`say`, `ask`, `propose`, `agree`, `reject`,
   `defer`, `resolution`, `amendment`) or a server event (`created`,
-  `joined`, `claimed`, `phase`, `ready`, `turn`, `paused`, `resumed`,
+  `joined`, `claimed`, `phase`, `ready`, `unready`, `turn`, `paused`, `resumed`,
   `vote`, `charter`, `amendment_rejected`, `resolution_declined`,
   `resolution_voided`, `approved`, `resolution_rejected`, `mandate`,
   `closed`, `renamed`, `link_issued`).
@@ -227,7 +227,8 @@ All return `{"room": status}` unless noted.
 | Endpoint | Body | |
 |----------|------|-|
 | `POST /api/rooms/{id}/resume` | `{"floor": "A", "add_turns": 10}` | end a hand or budget pause |
-| `POST /api/rooms/{id}/ready` | `{}` | briefing: this side is ready |
+| `POST /api/rooms/{id}/ready` | `{}` | briefing: this side starts the agents ("Start agents") |
+| `POST /api/rooms/{id}/unready` | `{}` | briefing: withdraw this side's start |
 | `POST /api/rooms/{id}/amendments/{seq}/vote` | `{"accept": true, "comment": "..."}` | vote on the pending amendment |
 | `POST /api/rooms/{id}/approve` | `{"resolution": 30}` | approval phase |
 | `POST /api/rooms/{id}/reject` | `{"resolution": 30, "comment": "..."}` | comment required |

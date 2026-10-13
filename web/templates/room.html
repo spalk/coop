@@ -22,7 +22,7 @@
       <section class="notice" id="briefing" hidden>
         <div class="label">Briefing</div>
         <div id="briefing-text"></div>
-        <div class="row"><button id="ready" class="primary">Ready to negotiate</button></div>
+        <div class="row"><button type="button" id="ready" class="primary" title="Your side is done with the briefing. The agents start when the person of every side has pressed this.">Start agents</button><button type="button" id="unready" title="Withdraw your start: the agents do not start until you press Start agents again." hidden>Withdraw start</button></div>
       </section>
 
       <section class="notice" id="amendment" hidden>
@@ -31,8 +31,8 @@
         <div class="muted" id="amd-votes"></div>
         <form class="row" id="amd-vote">
           <input id="amd-comment" type="text" maxlength="500" placeholder="Comment">
-          <button type="button" class="primary" data-accept="true">Accept</button>
-          <button type="button" data-accept="false">Reject</button>
+          <button type="button" class="primary" data-accept="true" title="Vote for this amendment. When every side accepts, it joins the charter and binds both agents.">Accept</button>
+          <button type="button" data-accept="false" title="Vote against this amendment. It stays in the log as an ordinary message and the room resumes.">Reject</button>
         </form>
       </section>
 
@@ -42,8 +42,8 @@
         <div class="muted" id="res-state"></div>
         <form class="row" id="res-decide">
           <input id="res-comment" type="text" maxlength="500" placeholder="Comment (required to reject)">
-          <button type="button" class="primary" id="approve">Approve</button>
-          <button type="button" id="reject">Reject</button>
+          <button type="button" class="primary" id="approve" title="Approve this resolution as the final decision. When every side approves, the room closes with it.">Approve</button>
+          <button type="button" id="reject" title="Send the resolution back. Your comment goes to the agents as a human message and the negotiation resumes.">Reject</button>
         </form>
       </section>
 
@@ -52,7 +52,7 @@
         <form id="resume" class="row" hidden>
           <label>Floor to <select id="resume-floor"></select></label>
           <label>Add turns <input id="resume-turns" type="number" min="0" max="500" value="0" inputmode="numeric"></label>
-          <button type="submit" class="primary">Resume</button>
+          <button type="submit" class="primary" title="Let the agents continue: the chosen side gets the floor, the added turns go to the budget.">Resume</button>
         </form>
       </section>
 
@@ -68,15 +68,15 @@
               <option value="say">Message</option>
               <option value="amendment">Amendment</option>
             </select>
-            <label class="check"><input type="checkbox" id="private"> Only my side</label>
-            <button type="submit" class="primary">Send</button>
+            <label class="check" title="Send to your own agent only: the other side does not see it."><input type="checkbox" id="private"> Only my side</label>
+            <button type="submit" class="primary" title="Post now. Agents must read your message before their next move. An amendment pauses the room for a vote of all people.">Send</button>
             <span class="spacer"></span>
-            <button type="button" id="pause-open">Pause agents</button>
-            <button type="button" id="close-open">Close room</button>
+            <button type="button" id="pause-open" title="Stop both agents until a person resumes the room. People can still write.">Pause agents</button>
+            <button type="button" id="close-open" title="End the room for everyone, with a reason. It cannot be reopened; the minutes stay readable.">Close room</button>
           </div>
           <div class="row" id="close-row" hidden>
             <input id="close-reason" type="text" maxlength="500" placeholder="Reason for closing">
-            <button type="button" class="primary" id="close-confirm">Close room</button>
+            <button type="button" class="primary" id="close-confirm" title="Close the room now. This cannot be undone.">Close room</button>
             <button type="button" id="close-cancel">Cancel</button>
           </div>
           <div id="error" class="error" role="alert"></div>
@@ -99,7 +99,7 @@
           <label>Mandate <span class="muted">(your side only)</span>
             <textarea id="mandate" rows="5" maxlength="8192"></textarea>
           </label>
-          <div class="row"><button type="button" id="mandate-save">Save mandate</button><span id="mandate-state" class="muted"></span></div>
+          <div class="row"><button type="button" id="mandate-save" title="Save the brief for your agent: limits, topics it must not discuss, what it may concede. Only your side sees it.">Save mandate</button><span id="mandate-state" class="muted"></span></div>
         </div>
       </details>
       <details>
