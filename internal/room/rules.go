@@ -132,6 +132,8 @@ func agentsBlocked(r *roomRow) *Error {
 		return errorf(http.StatusConflict, "wrong_phase", "briefing: only humans write; wait for the negotiation phase")
 	case PhaseApproval:
 		return errorf(http.StatusConflict, "wrong_phase", "approval: the humans are deciding on the resolution")
+	case PhaseDecided:
+		return errorf(http.StatusConflict, "wrong_phase", "decided: the humans are choosing to close the room or to continue")
 	}
 	if r.PauseKind != "" || r.PendingAmendment != 0 {
 		kind := r.PauseKind
@@ -479,7 +481,8 @@ func (s *Service) Ready(p Principal) error {
 }
 
 // Approve records a human's approval of the resolution in the approval
-// phase; the room closes when all sides have approved.
+// phase. When all sides have approved, the resolution is adopted as a
+// decision and the room moves to decided: the humans close it or continue.
 func (s *Service) Approve(p Principal, resolution int64) error {
 	if p.Actor != ActorHuman {
 		return ErrHumansOnly
@@ -504,8 +507,74 @@ func (s *Service) Approve(p Principal, resolution int64) error {
 		if err != nil || len(approved) < len(r.Sides) {
 			return err
 		}
-		return closeRoom(tx, r, now, ReasonApproved, "", serverEvent(EventClosed,
-			map[string]any{"reason": ReasonApproved, "resolution": resolution}))
+		if _, err := appendEvent(tx, r, now, serverEvent(EventDecided, map[string]any{"resolution": resolution})); err != nil {
+			return err
+		}
+		return setPhase(tx, r, now, PhaseDecided)
+	})
+}
+
+// Finish is a human's choice after a decision. close: the side wants to
+// close; the room closes (reason approved) when every side has chosen so.
+// Otherwise request is the next question for the agents: it is posted as
+// the human's message, negotiation resumes and the floor goes to the
+// requester's side. One request is enough to continue.
+func (s *Service) Finish(p Principal, close bool, request string) error {
+	if p.Actor != ActorHuman {
+		return ErrHumansOnly
+	}
+	request = strings.TrimSpace(request)
+	if !close {
+		if request == "" {
+			return badRequest("to continue, write the next question or request for the agents")
+		}
+		if len(request) > MaxBody {
+			return errorf(http.StatusRequestEntityTooLarge, "too_large", "the request is longer than %d bytes", MaxBody)
+		}
+	}
+	return s.mutate(p.RoomID, func(tx *sql.Tx, r *roomRow, now int64) error {
+		if r.Phase != PhaseDecided {
+			return wrongPhase(r.Phase)
+		}
+		resolution := r.PendingResolution
+		if close {
+			res, err := tx.Exec(`INSERT OR IGNORE INTO marks (room_id, subject, kind, side, ts) VALUES (?, ?, 'close', ?, ?)`,
+				r.ID, resolution, p.Side, now)
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				return nil
+			}
+			if _, err := appendEvent(tx, r, now, newEvent{Type: EventFinishVote, Side: p.Side, Actor: p.Actor, To: -1,
+				VisibleTo: -1, Data: map[string]any{"resolution": resolution, "choice": "close"}}); err != nil {
+				return err
+			}
+			voted, err := marks(tx, r.ID, resolution, "close")
+			if err != nil || len(voted) < len(r.Sides) {
+				return err
+			}
+			return closeRoom(tx, r, now, ReasonApproved, "", serverEvent(EventClosed,
+				map[string]any{"reason": ReasonApproved, "resolution": resolution}))
+		}
+		if _, err := tx.Exec(`DELETE FROM marks WHERE room_id = ? AND subject = ? AND kind = 'close'`, r.ID, resolution); err != nil {
+			return err
+		}
+		if _, err := appendEvent(tx, r, now, newEvent{Type: TypeSay, Side: p.Side, Actor: p.Actor, To: -1, VisibleTo: -1,
+			Body: request, Data: map[string]any{"continues": resolution}}); err != nil {
+			return err
+		}
+		if _, err := appendEvent(tx, r, now, newEvent{Type: EventContinued, Side: p.Side, Actor: p.Actor, To: -1,
+			VisibleTo: -1, Data: map[string]any{"resolution": resolution}}); err != nil {
+			return err
+		}
+		r.PendingResolution = 0
+		r.Floor = p.Side
+		if err := setPhase(tx, r, now, PhaseNegotiation); err != nil {
+			return err
+		}
+		_, err := appendEvent(tx, r, now, turnEvent(r.Floor))
+		return err
 	})
 }
 

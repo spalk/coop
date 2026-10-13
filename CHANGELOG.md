@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- A resolution approved by all humans no longer closes the room. It is
+  adopted as a decision and the room moves to the new phase `decided`: each
+  person closes the room or continues with a new request for the agents
+  (`POST /api/rooms/{id}/finish`); the room closes when every side chooses to
+  close. Minutes list all decisions.
+- Room page: the live protocol ("Course of the meeting") is in a left
+  sidebar; the right sidebar keeps links, mandate and export.
 - Threads still open or deferred when a resolution is approved are shown as
   `settled` instead of open questions.
 - Database layout 3 (publishing); upgrading from layout 2 keeps the rooms.

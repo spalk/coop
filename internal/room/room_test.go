@@ -362,6 +362,41 @@ func TestResolutionAgreementApproval(t *testing.T) {
 	if err := f.s.Approve(f.humanB, r3.Seq); err != nil {
 		t.Fatal(err)
 	}
+	// Adopted: the room waits for the humans to close or continue.
+	st = f.status()
+	if st.Phase != PhaseDecided || st.ClosedAt != nil {
+		t.Fatalf("decided: %+v", st)
+	}
+	_, _, err = f.s.Post(f.agentA, Message{Type: TypeSay, Body: "x", Summary: "x", Ack: ack(st.LastSeq)})
+	wantCode(t, err, "wrong_phase")
+	wantCode(t, f.s.Finish(f.agentA, true, ""), "humans_only")
+	wantCode(t, f.s.Finish(f.humanB, false, " "), "bad_request")
+	if err := f.s.Finish(f.humanA, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	// B continues with a new request: the close vote of A is cleared.
+	if err := f.s.Finish(f.humanB, false, "Now agree on the refund export."); err != nil {
+		t.Fatal(err)
+	}
+	st = f.status()
+	if st.Phase != PhaseNegotiation || st.Floor != "B" || st.Resolution != nil {
+		t.Fatalf("continued: %+v", st)
+	}
+	_, _, err = f.s.Post(f.agentA, Message{Type: TypeSay, Body: "x", Summary: "x", Ack: ack(st.LastSeq - 4)})
+	wantCode(t, err, "unread_human_message")
+
+	r4 := f.move(f.agentB, TypeResolution, "refunds daily", 0)
+	f.move(f.agentA, TypeAgree, "agreed", r4.Seq)
+	for _, h := range []Principal{f.humanA, f.humanB} {
+		if err := f.s.Approve(h, r4.Seq); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, h := range []Principal{f.humanA, f.humanB} {
+		if err := f.s.Finish(h, true, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
 	st = f.status()
 	if st.Phase != PhaseClosed || st.CloseReason != ReasonApproved {
 		t.Fatalf("closed: %+v", st)
@@ -370,11 +405,14 @@ func TestResolutionAgreementApproval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Resolution == nil || m.Resolution.Seq != r3.Seq || m.Resolution.Status != "approved" {
+	if len(m.Decisions) != 2 || m.Decisions[0].Seq != r3.Seq || m.Decisions[1].Seq != r4.Seq {
+		t.Fatalf("decisions: %+v", m.Decisions)
+	}
+	if m.Resolution == nil || m.Resolution.Seq != r4.Seq || m.Resolution.Status != "approved" {
 		t.Fatalf("minutes resolution: %+v", m.Resolution)
 	}
-	if !strings.Contains(m.Markdown(), "v3 with currency") {
-		t.Fatal("minutes lack the resolution")
+	if md := m.Markdown(); !strings.Contains(md, "v3 with currency") || !strings.Contains(md, "refunds daily") {
+		t.Fatal("minutes lack a decision")
 	}
 }
 

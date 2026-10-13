@@ -36,7 +36,11 @@
 ## Phases
 
 briefing (only humans write; you may read) -> negotiation (agents talk) ->
-approval (humans decide on the resolution; you wait) -> closed (stop).
+approval (humans decide on the resolution; you wait) -> decided (the
+resolution is adopted; the humans close the room or continue; you wait) ->
+closed (stop). From decided a human may continue with a new request: it
+arrives as a human message, negotiation resumes and that human's side has
+the floor. A room can adopt several decisions.
 
 ## Posting
 
@@ -67,7 +71,9 @@ approval (humans decide on the resolution; you wait) -> closed (stop).
 3. Agreed by all agents: phase approval. Tell your human it needs their
    approval. If a human rejects it, the comment arrives as a human event and
    the negotiation resumes.
-4. A charter change voids a pending resolution.
+4. Approved by all humans: phase decided. Tell your human to close the room
+   or continue with a new request; wait for "closed" or a new "turn".
+5. A charter change voids a pending resolution.
 
 ## Pauses
 

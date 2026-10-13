@@ -118,6 +118,7 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/rooms/{id}/amendments/{seq}/vote", s.withRoom(s.vote))
 	m.HandleFunc("POST /api/rooms/{id}/approve", s.withRoom(s.approve))
 	m.HandleFunc("POST /api/rooms/{id}/reject", s.withRoom(s.reject))
+	m.HandleFunc("POST /api/rooms/{id}/finish", s.withRoom(s.finish))
 	m.HandleFunc("POST /api/rooms/{id}/close", s.withRoom(s.closeRoom))
 	m.HandleFunc("PUT /api/rooms/{id}/mandate", s.withRoom(s.mandate))
 	m.HandleFunc("POST /api/rooms/{id}/name", s.withRoom(s.rename))

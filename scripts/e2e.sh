@@ -61,7 +61,7 @@ curl -sf "$BASE/healthz" >/dev/null || fail "server did not start: $(cat "$WORK/
 ok
 
 step "llms.txt is served"
-curl -sf "$BASE/llms.txt" | grep -q "unread_human_message" || fail "llms.txt"
+LLMS=$(curl -sf "$BASE/llms.txt") && grep -q "unread_human_message" <<<"$LLMS" || fail "llms.txt"
 ok
 
 step "agent A creates a room without a key, with a briefing"
@@ -74,7 +74,7 @@ INV=$(jq -r '.invitations[0].url' <<<"$OUT")
 ok
 
 step "an agent fetching the invitation is told it is for a person"
-curl -sf "$INV" | grep -q "for a person" || fail "invitation text"
+grep -q "for a person" <<<"$(curl -sf "$INV")" || fail "invitation text"
 ok
 
 step "human A enters; human B accepts the invitation"
@@ -110,7 +110,7 @@ call POST "/api/rooms/$ID/agent-link" "@$WORK/b.jar" '{}'
 expect 200
 AURL=$(jq -r .agent_url <<<"$OUT")
 TB=${AURL##*/}
-curl -sf "$AURL" | grep -q "agent of side B (Vasya)" || fail "agent link text"
+grep -q "agent of side B (Vasya)" <<<"$(curl -sf "$AURL")" || fail "agent link text"
 ok
 
 step "agent B is refused out of turn"
@@ -183,7 +183,7 @@ call POST "/api/rooms/$ID/reject" "@$WORK/a.jar" "{\"resolution\":$RES,\"comment
 expect 200 .room.phase negotiation
 ok
 
-step "new resolution, agreed and approved by both humans: closed"
+step "new resolution, agreed and approved by both humans: decided"
 say "$TA" resolution "GET /orders with currency" "Final: GET /orders?since=, UTC, 500 per page, with currency."
 expect 201
 RES=$(jq -r .event.seq <<<"$OUT")
@@ -191,6 +191,13 @@ say "$TB" agree "Agreed" "Agreed." "$RES"
 expect 201 .room.phase approval
 call POST "/api/rooms/$ID/approve" "@$WORK/a.jar" "{\"resolution\":$RES}"
 call POST "/api/rooms/$ID/approve" "@$WORK/b.jar" "{\"resolution\":$RES}"
+expect 200 .room.phase decided
+ok
+
+step "both humans choose to close: closed as approved"
+call POST "/api/rooms/$ID/finish" "@$WORK/a.jar" '{"close":true}'
+expect 200 .room.phase decided
+call POST "/api/rooms/$ID/finish" "@$WORK/b.jar" '{"close":true}'
 expect 200 .room.phase closed
 [[ $(jq -r .room.close_reason <<<"$OUT") == approved ]] || fail "close reason"
 ok
@@ -215,8 +222,8 @@ expect 200 .room.close_reason closed_by_A
 ok
 
 step "home page lists rooms without topics"
-curl -s -H 'Accept: text/html' "$BASE/" | grep -q "Orders export" && fail "topic on home page"
-curl -s -H 'Accept: text/html' "$BASE/" | grep -q "private" || fail "room list"
+grep -q "Orders export" <<<"$(curl -s -H 'Accept: text/html' "$BASE/")" && fail "topic on home page"
+grep -q "private" <<<"$(curl -s -H 'Accept: text/html' "$BASE/")" || fail "room list"
 ok
 
 step "admin CLI lists the rooms"

@@ -18,6 +18,11 @@
   </header>
 
   <div class="layout">
+    <aside class="panel minutes" aria-label="Course of the meeting">
+      <h2 class="panel-title">Course of the meeting</h2>
+      <div id="protocol"></div>
+    </aside>
+
     <section class="main">
       <section class="notice" id="briefing" hidden>
         <div class="label">Briefing</div>
@@ -46,6 +51,14 @@
           <input id="res-comment" type="text" maxlength="500" placeholder="Comment (required to reject)">
           <button type="button" class="primary" id="approve" title="Approve this resolution as the final decision. When every side approves, the room closes with it.">Approve</button>
           <button type="button" id="reject" title="Send the resolution back. Your comment goes to the agents as a human message and the negotiation resumes.">Reject</button>
+        </form>
+        <form class="stack" id="res-finish" hidden>
+          <div class="row">
+            <button type="button" class="primary" id="finish-close" title="You are done. The room closes with this decision when every side has chosen to close.">Close the room</button>
+            <span class="muted">or continue with a new question:</span>
+          </div>
+          <textarea id="finish-request" rows="2" maxlength="8192" placeholder="Next question or request for the agents"></textarea>
+          <div class="row"><button type="button" id="finish-continue" title="Keep the decision and go on: your text goes to the agents as your message, negotiation resumes and your agent has the floor. One side continuing is enough.">Continue</button></div>
         </form>
       </section>
 
@@ -98,14 +111,10 @@
       </footer>
     </section>
 
-    <aside class="panel">
+    <aside class="panel" aria-label="Room settings">
       <details open>
         <summary>Links</summary>
         <div id="links" class="stack" data-mylink="{{.HumanURL}}"></div>
-      </details>
-      <details open>
-        <summary>Protocol</summary>
-        <div id="protocol"></div>
       </details>
       <details open>
         <summary>Your side</summary>

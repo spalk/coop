@@ -16,12 +16,17 @@
     <a href="{{$.BasePath}}/p/{{$.RoomID}}/minutes.json">JSON</a>
   </p>
 
-  {{with .Resolution}}
+  {{range .Decisions}}
+  <section class="notice">
+    <div class="label">Decision · resolution #{{.Seq}} by {{sideName $.Minutes.Room .Side}}</div>
+    <div class="body text">{{.Body}}</div>
+  </section>
+  {{else}}{{with .Resolution}}
   <section class="notice">
     <div class="label">Decision · resolution #{{.Seq}} by {{sideName $.Minutes.Room .Side}} · {{.Status}}</div>
     <div class="body text">{{.Body}}</div>
   </section>
-  {{end}}
+  {{end}}{{end}}
 
   {{if .Room.Charter.Items}}
   <section class="notice">

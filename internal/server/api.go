@@ -409,6 +409,14 @@ func (s *Server) unready(w http.ResponseWriter, r *http.Request, p room.Principa
 	act(s, w, r, p, func(struct{}) error { return s.svc.Unready(p) })
 }
 
+func (s *Server) finish(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	type finishReq struct {
+		Close   bool   `json:"close"`
+		Request string `json:"request"`
+	}
+	act(s, w, r, p, func(req finishReq) error { return s.svc.Finish(p, req.Close, req.Request) })
+}
+
 func (s *Server) publish(w http.ResponseWriter, r *http.Request, p room.Principal) {
 	act(s, w, r, p, func(struct{}) error { return s.svc.Publish(p) })
 }

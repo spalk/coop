@@ -59,9 +59,11 @@ type ResolutionText struct {
 type Protocol struct {
 	Room       Status          `json:"room"`
 	Resolution *ResolutionText `json:"resolution,omitempty"`
-	Threads    []Thread        `json:"threads"`
-	Open       []int64         `json:"open_questions"`
-	Timeline   []Line          `json:"timeline"`
+	// Decisions are the resolutions adopted in this room, in order.
+	Decisions []ResolutionText `json:"decisions"`
+	Threads   []Thread         `json:"threads"`
+	Open      []int64          `json:"open_questions"`
+	Timeline  []Line           `json:"timeline"`
 }
 
 // Protocol builds the live protocol of a room for a viewer (nil: public).
@@ -96,7 +98,7 @@ func clip(s string, n int) string {
 }
 
 func buildProtocol(st Status, evs []Event) Protocol {
-	p := Protocol{Room: st, Threads: []Thread{}, Open: []int64{}, Timeline: []Line{}}
+	p := Protocol{Room: st, Decisions: []ResolutionText{}, Threads: []Thread{}, Open: []int64{}, Timeline: []Line{}}
 	byIdx := map[int64]int{}    // thread root seq -> index in p.Threads
 	rootOf := map[int64]int64{} // message seq -> thread root seq
 	resolutions := map[int64]Event{}
@@ -149,6 +151,22 @@ func buildProtocol(st Status, evs []Event) Protocol {
 				t.Status = ThreadOpen
 			}
 			line(e, e.Type, side(e.Side)+" "+verb(e.Type)+" #"+fmt.Sprint(root)+": "+e.Summary)
+		case EventDecided:
+			n := int64(numOf(e.Data["resolution"]))
+			if r, ok := resolutions[n]; ok {
+				p.Decisions = append(p.Decisions, ResolutionText{Seq: r.Seq, TS: r.TS, Side: r.Side, Summary: r.Summary,
+					Body: r.Body, Status: "approved"})
+			}
+			for i := range p.Threads {
+				if t := &p.Threads[i]; t.Status == ThreadOpen || t.Status == ThreadDeferred {
+					t.Status = ThreadSettled
+				}
+			}
+			line(e, "decided", "Resolution #"+fmt.Sprint(n)+" adopted; close or continue")
+		case EventFinishVote:
+			line(e, "finish", side(e.Side)+" chose to close the room")
+		case EventContinued:
+			line(e, "continued", side(e.Side)+" continues with a new request")
 		case TypeResolution:
 			resolutions[e.Seq] = e
 			line(e, "resolution", side(e.Side)+" proposes resolution #"+fmt.Sprint(e.Seq)+": "+e.Summary)
@@ -225,7 +243,8 @@ func buildProtocol(st Status, evs []Event) Protocol {
 		}
 	}
 
-	approved := st.CloseReason == ReasonApproved
+	// Rooms closed before the decided phase existed have no decided event.
+	approved := st.CloseReason == ReasonApproved && len(p.Decisions) == 0
 	for i := range p.Threads {
 		t := &p.Threads[i]
 		if t.Status != ThreadOpen && t.Status != ThreadDeferred {
@@ -244,7 +263,7 @@ func buildProtocol(st Status, evs []Event) Protocol {
 		if e, ok := resolutions[st.Resolution.Seq]; ok {
 			res, status = &e, "agreement"
 			switch {
-			case st.CloseReason == ReasonApproved:
+			case st.CloseReason == ReasonApproved, st.Phase == PhaseDecided:
 				status = "approved"
 			case st.Phase == PhaseApproval:
 				status = "approval"
@@ -376,10 +395,15 @@ func (m Minutes) Markdown() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString("## Decision\n\n")
-	if r := m.Resolution; r == nil {
+	b.WriteString("## Decisions\n\n")
+	decisions := m.Decisions
+	if r := m.Resolution; r != nil && (len(decisions) == 0 || decisions[len(decisions)-1].Seq != r.Seq) {
+		decisions = append(decisions, *r) // pending, or adopted before the decided phase existed
+	}
+	if len(decisions) == 0 {
 		b.WriteString("No resolution.\n\n")
-	} else {
+	}
+	for _, r := range decisions {
 		fmt.Fprintf(&b, "Resolution #%d by %s, %s, status: %s.\n\n%s\n\n", r.Seq, name(r.Side), fmtTime(r.TS), r.Status, quote(r.Body))
 	}
 

@@ -14,6 +14,7 @@ const (
 	PhaseBriefing    = "briefing"
 	PhaseNegotiation = "negotiation"
 	PhaseApproval    = "approval"
+	PhaseDecided     = "decided" // a resolution was adopted; the humans close or continue
 	PhaseClosed      = "closed"
 )
 
@@ -64,6 +65,9 @@ const (
 	EventResolutionDeclined = "resolution_declined"
 	EventResolutionVoided   = "resolution_voided"
 	EventApproved           = "approved"
+	EventDecided            = "decided"
+	EventFinishVote         = "finish_vote"
+	EventContinued          = "continued"
 	EventResolutionRejected = "resolution_rejected"
 	EventMandate            = "mandate"
 	EventClosed             = "closed"
@@ -209,6 +213,7 @@ type ResolutionState struct {
 	CharterVersion int      `json:"charter_version"`
 	AgreedBy       []string `json:"agreed_by"`
 	ApprovedBy     []string `json:"approved_by"`
+	CloseBy        []string `json:"close_by,omitempty"` // decided phase: sides that chose to close
 }
 
 // AmendmentState is the pending amendment and its votes.

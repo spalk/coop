@@ -156,6 +156,9 @@
     if (room.phase === "approval") {
       state = "Agreed by the agents. Approvals: " + room.sides.map((s) =>
         sideName(s.label) + (r.approved_by.includes(s.label) ? " approved" : " pending")).join(" · ");
+    } else if (room.phase === "decided") {
+      state = "Adopted by all sides. Close the room or continue: " + room.sides.map((s) =>
+        sideName(s.label) + ((r.close_by || []).includes(s.label) ? " chose to close" : " deciding")).join(" · ");
     } else if (room.phase === "closed") {
       state = "Approved by all sides.";
     } else {
@@ -164,6 +167,7 @@
     }
     $("res-state").textContent = state;
     $("res-decide").hidden = room.phase !== "approval" || r.approved_by.includes(room.you.side);
+    $("res-finish").hidden = room.phase !== "decided" || room.you.actor !== "human" || (r.close_by || []).includes(room.you.side);
   }
 
   function renderPause() {
@@ -197,7 +201,7 @@
     $("composer").hidden = closed;
     if (!closed) return;
     let text = "Closed: " + room.close_reason;
-    if (room.close_reason === "approved") text = "Closed: the resolution was approved by all sides.";
+    if (room.close_reason === "approved") text = "Closed by all sides after the decision.";
     if (room.close_reason === "expired") text = "Closed: the room expired.";
     if (room.close_note) text += " " + room.close_note;
     $("closed").textContent = text;
@@ -349,6 +353,9 @@
       case "phase": return "Phase: " + d.to;
       case "ready": return sideName(e.side) + " pressed Start agents";
       case "unready": return sideName(e.side) + " withdrew the start";
+      case "decided": return "Resolution #" + d.resolution + " adopted by all sides: close the room or continue";
+      case "finish_vote": return sideName(e.side) + " chose to close the room";
+      case "continued": return sideName(e.side) + " continues the negotiation with a new request";
       case "publish_vote": return sideName(e.side) + " agreed to publish the room";
       case "published": return "Published: anyone can read this room";
       case "unpublished": return sideName(e.side) + " withdrew publication";
@@ -445,7 +452,13 @@
       box.append(ol);
     }
 
-    if (p.resolution) {
+    if (p.decisions.length) {
+      box.append(el("h3", "", "Decisions"));
+      const ol = el("ol", "charter-list");
+      for (const d of p.decisions) ol.append(el("li", "", "#" + d.seq + " " + sideName(d.side) + ": " + d.summary));
+      box.append(ol);
+    }
+    if (p.resolution && !p.decisions.some((d) => d.seq === p.resolution.seq)) {
       box.append(el("h3", "", "Resolution #" + p.resolution.seq));
       box.append(el("p", "", sideName(p.resolution.side) + ": " + p.resolution.summary + " (" + p.resolution.status + ")"));
     }
@@ -520,6 +533,11 @@
 
     bindToggle("amd-body", "amd-toggle", () => room.amendment && room.amendment.seq);
     bindToggle("res-body", "res-toggle", () => room.resolution && room.resolution.seq);
+    $("finish-close").addEventListener("click", guard(() => call("POST", "/finish", { close: true })));
+    $("finish-continue").addEventListener("click", guard(async () => {
+      await call("POST", "/finish", { close: false, request: $("finish-request").value });
+      $("finish-request").value = "";
+    }));
     $("publish").addEventListener("click", guard(() => call("POST", "/publish", {})));
     $("unpublish").addEventListener("click", guard(async () => {
       if (room.published_at && !window.confirm("The room stops being public for everyone. Continue?")) return;

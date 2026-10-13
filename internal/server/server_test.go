@@ -284,6 +284,11 @@ func TestNegotiationFlow(t *testing.T) {
 			t.Fatalf("approve: %d %v", code, out)
 		}
 	}
+	for _, h := range []*http.Client{r.humanA, r.humanB} {
+		if code, out := e.do(h, "POST", "/api/rooms/"+r.id+"/finish", "", map[string]any{"close": true}); code != 200 {
+			t.Fatalf("finish: %d %v", code, out)
+		}
+	}
 	_, out = e.do(nil, "GET", "/api/rooms/"+r.id+"/protocol", r.agentB, nil)
 	if field(out, "room", "phase") != "closed" || field(out, "resolution", "status") != "approved" ||
 		len(out["threads"].([]any)) != 1 {

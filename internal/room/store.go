@@ -486,6 +486,13 @@ func statusOf(q querier, r *roomRow, viewer *Principal) (Status, error) {
 		}
 		st.Resolution = &ResolutionState{Seq: r.PendingResolution, Side: Label(r.ResolutionSide),
 			CharterVersion: r.ResolutionCharter, AgreedBy: labels(agreed, n), ApprovedBy: labels(approved, n)}
+		if r.Phase == PhaseDecided {
+			closeBy, err := marks(q, r.ID, r.PendingResolution, "close")
+			if err != nil {
+				return st, err
+			}
+			st.Resolution.CloseBy = labels(closeBy, n)
+		}
 	}
 	if r.PendingAmendment != 0 {
 		evs, err := queryEvents(q, `room_id = ? AND seq = ?`, r.ID, r.PendingAmendment)
