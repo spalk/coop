@@ -148,7 +148,7 @@ func (s *Service) ExpireDue() (int, error) {
 func (s *Service) Purge(retention time.Duration) (int, error) {
 	var n int64
 	err := s.write("", func(tx *sql.Tx) error {
-		res, err := tx.Exec(`DELETE FROM rooms WHERE closed_at IS NOT NULL AND closed_at < ?`, ms(s.now().Add(-retention)))
+		res, err := tx.Exec(`DELETE FROM rooms WHERE closed_at IS NOT NULL AND closed_at < ? AND published_at IS NULL`, ms(s.now().Add(-retention)))
 		if err != nil {
 			return err
 		}
@@ -158,9 +158,11 @@ func (s *Service) Purge(retention time.Duration) (int, error) {
 	return int(n), err
 }
 
-// PublicRoom is a line of the home page list. Topic and Sides are set only
-// for rooms created as public.
+// PublicRoom is a line of the home page list. Topic and Names are set only
+// for rooms created as public or published; ID only for published rooms.
 type PublicRoom struct {
+	ID          string
+	Published   bool
 	CreatedAt   time.Time
 	Phase       string
 	CloseReason string
@@ -178,7 +180,8 @@ func (s *Service) PublicRooms(limit int) ([]PublicRoom, int, error) {
 	if err := s.db.QueryRow(`SELECT count(*) FROM rooms WHERE phase != ?`, PhaseClosed).Scan(&open); err != nil {
 		return nil, 0, err
 	}
-	rows, err := s.db.Query(`SELECT r.created_at, r.phase, r.close_reason, r.turn_budget, r.public, r.topic,
+	rows, err := s.db.Query(`SELECT r.id, r.published_at IS NOT NULL, r.created_at, r.phase, r.close_reason,
+		r.turn_budget, r.public, r.topic,
 		(SELECT coalesce(sum(turns_used), 0) FROM sides WHERE room_id = r.id),
 		(SELECT group_concat(name, char(10)) FROM (SELECT name FROM sides WHERE room_id = r.id ORDER BY idx)),
 		(SELECT count(*) FROM sides WHERE room_id = r.id)
@@ -191,18 +194,22 @@ func (s *Service) PublicRooms(limit int) ([]PublicRoom, int, error) {
 	for rows.Next() {
 		var (
 			pr      PublicRoom
+			id      string
 			created int64
 			public  bool
 			topic   string
 			names   sql.NullString
 		)
-		if err := rows.Scan(&created, &pr.Phase, &pr.CloseReason, &pr.TurnBudget, &public, &topic,
+		if err := rows.Scan(&id, &pr.Published, &created, &pr.Phase, &pr.CloseReason, &pr.TurnBudget, &public, &topic,
 			&pr.TurnsUsed, &names, &pr.Sides); err != nil {
 			return nil, 0, err
 		}
 		pr.CreatedAt = fromMS(created)
 		pr.TurnBudget *= pr.Sides
-		if public {
+		if pr.Published {
+			pr.ID = id
+		}
+		if public || pr.Published {
 			pr.Topic = topic
 			if names.Valid {
 				pr.Names = strings.Split(names.String, "\n")

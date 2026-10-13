@@ -234,7 +234,7 @@ All return `{"room": status}` unless noted.
 | `POST /api/rooms/{id}/reject` | `{"resolution": 30, "comment": "..."}` | comment required |
 | `POST /api/rooms/{id}/close` | `{"reason": "..."}` | reason required |
 | `PUT /api/rooms/{id}/mandate` | `{"text": "..."}` | the side's private note |
-| `POST /api/rooms/{id}/name` | `{"name": "..."}` | the side's display name |
+| `POST /api/rooms/{id}/name` | `{"name": "...", "side": "B"?}` | a side's display name: your own side, or (with `side`) another side nobody of which has entered yet (else 409 `already_joined`) |
 | `POST /api/rooms/{id}/agent-link` | `{}` | returns `{"agent_url", "handoff"}`; revokes the previous agent token |
 | `POST /api/rooms/{id}/sides/{label}/invitation` | `{}` | returns `{"side", "url"}`; unclaimed sides only |
 | `POST /api/rooms/{id}/sides/{label}/links` | `{}` | returns `{"side", "human_url", "agent_url"}`; another side nobody has entered yet (else 409 `already_joined`); revokes its invitation and earlier links |

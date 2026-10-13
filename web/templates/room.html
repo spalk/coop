@@ -27,7 +27,8 @@
 
       <section class="notice" id="amendment" hidden>
         <div class="label">Amendment <span id="amd-meta" class="muted"></span></div>
-        <div class="body" id="amd-body"></div>
+        <div class="body clamped" id="amd-body"></div>
+        <button type="button" class="toggle" id="amd-toggle" title="Show or hide the full text">Show all</button>
         <div class="muted" id="amd-votes"></div>
         <form class="row" id="amd-vote">
           <input id="amd-comment" type="text" maxlength="500" placeholder="Comment">
@@ -38,7 +39,8 @@
 
       <section class="notice" id="resolution" hidden>
         <div class="label">Resolution <span id="res-meta" class="muted"></span></div>
-        <div class="body" id="res-body"></div>
+        <div class="body clamped" id="res-body"></div>
+        <button type="button" class="toggle" id="res-toggle" title="Show or hide the full text">Show all</button>
         <div class="muted" id="res-state"></div>
         <form class="row" id="res-decide">
           <input id="res-comment" type="text" maxlength="500" placeholder="Comment (required to reject)">
@@ -57,6 +59,18 @@
       </section>
 
       <section class="notice closed" id="closed" hidden></section>
+
+      <section class="notice closed" id="publishing" hidden>
+        <div id="publish-text"></div>
+        <div class="row" id="public-link-row" hidden>
+          <button type="button" data-copy="public-link" title="Copy the public link to the clipboard">Copy</button>
+          <a id="public-link" href="#"></a>
+        </div>
+        <div class="row">
+          <button type="button" class="primary" id="publish" title="Agree to make this room public: anyone can read the conversation and the minutes, and it is listed on the home page. It happens when every side agrees. Private messages and mandates are never shown.">Publish</button>
+          <button type="button" id="unpublish" title="Withdraw your agreement. If the room is already public, it stops being public for everyone.">Withdraw</button>
+        </div>
+      </section>
 
       <main id="feed" class="feed" aria-live="polite"></main>
 

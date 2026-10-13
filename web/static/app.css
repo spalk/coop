@@ -221,7 +221,7 @@ b.side-B, .timeline .side-B { color: var(--b); }
 .thread .reply { padding-left: 1rem; color: var(--muted); }
 .badge { display: inline-block; font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; border: 1px solid var(--border);
   border-radius: 4px; padding: 0 .3rem; margin-right: .35rem; }
-.status-accepted .badge { border-color: var(--accent); color: var(--accent); }
+.status-accepted .badge, .status-settled .badge { border-color: var(--accent); color: var(--accent); }
 .status-rejected .badge { border-color: var(--error); color: var(--error); }
 .status-deferred .badge { border-color: var(--warn-border); }
 .timeline { margin: 0; padding-left: 1rem; color: var(--muted); }
@@ -237,3 +237,11 @@ b.side-B, .timeline .side-B { color: var(--b); }
   .bar, .composer { padding: .5rem .75rem; }
   .notice { margin: .5rem .75rem 0; }
 }
+
+.public { max-width: 52rem; margin: 0 auto; padding: 2rem 1rem; display: grid; gap: 1rem; }
+.public h1, .public h2, .public p { margin: 0; }
+.feed.static { overflow: visible; padding: 0; }
+.mono { font-family: var(--mono); font-size: .75rem; overflow-wrap: anywhere; }
+
+.notice .body.clamped { max-height: 6.5em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
+button.toggle { padding: .1rem .5rem; font-size: .8rem; justify-self: start; }

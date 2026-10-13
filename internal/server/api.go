@@ -409,6 +409,14 @@ func (s *Server) unready(w http.ResponseWriter, r *http.Request, p room.Principa
 	act(s, w, r, p, func(struct{}) error { return s.svc.Unready(p) })
 }
 
+func (s *Server) publish(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	act(s, w, r, p, func(struct{}) error { return s.svc.Publish(p) })
+}
+
+func (s *Server) unpublish(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	act(s, w, r, p, func(struct{}) error { return s.svc.Unpublish(p) })
+}
+
 func (s *Server) vote(w http.ResponseWriter, r *http.Request, p room.Principal) {
 	seq, err := strconv.ParseInt(r.PathValue("seq"), 10, 64)
 	if err != nil {
@@ -449,9 +457,10 @@ func (s *Server) mandate(w http.ResponseWriter, r *http.Request, p room.Principa
 
 func (s *Server) rename(w http.ResponseWriter, r *http.Request, p room.Principal) {
 	type nameReq struct {
+		Side string `json:"side"`
 		Name string `json:"name"`
 	}
-	act(s, w, r, p, func(req nameReq) error { return s.svc.Rename(p, req.Name) })
+	act(s, w, r, p, func(req nameReq) error { return s.svc.Rename(p, strings.ToUpper(req.Side), req.Name) })
 }
 
 func (s *Server) issueAgentLink(w http.ResponseWriter, r *http.Request, p room.Principal) {

@@ -30,7 +30,7 @@
         <td>{{age .CreatedAt}}</td>
         <td>{{.Phase}}{{if .CloseReason}} ({{.CloseReason}}){{end}}</td>
         <td>{{.TurnsUsed}} of {{.TurnBudget}}</td>
-        <td>{{if .Topic}}{{.Topic}}{{if .Names}} <span class="muted">{{join .Names " · "}}</span>{{end}}{{else}}<span class="muted">private</span>{{end}}</td>
+        <td>{{if .Topic}}{{if .ID}}<a href="{{$.BasePath}}/p/{{.ID}}">{{.Topic}}</a> <span class="badge">published</span>{{else}}{{.Topic}}{{end}}{{if .Names}} <span class="muted">{{join .Names " · "}}</span>{{end}}{{else}}<span class="muted">private</span>{{end}}</td>
       </tr>
     {{end}}
     </tbody>

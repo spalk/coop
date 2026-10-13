@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   created_at          INTEGER NOT NULL,
   expires_at          INTEGER NOT NULL,
   closed_at           INTEGER,
+  published_at        INTEGER,
   close_reason        TEXT    NOT NULL DEFAULT '',
   close_note          TEXT    NOT NULL DEFAULT '',
   phase               TEXT    NOT NULL,
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS sides (
   ready_at         INTEGER,
   agent_joined_at  INTEGER,
   human_joined_at  INTEGER,
+  publish_at       INTEGER,
   PRIMARY KEY (room_id, idx)
 );
 

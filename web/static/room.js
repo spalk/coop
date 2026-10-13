@@ -112,12 +112,33 @@
     $("unready").hidden = !(mine && mine.ready_at);
   }
 
+  // Long resolutions and amendments are clamped to a few lines; the reader
+  // expands them. The choice is kept per message while the page is open.
+  const expanded = new Set();
+
+  function clamp(bodyID, toggleID, seq) {
+    const body = $(bodyID);
+    const open = expanded.has(seq);
+    body.classList.toggle("clamped", !open);
+    $(toggleID).textContent = open ? "Collapse" : "Show all";
+    $(toggleID).hidden = !open && body.scrollHeight <= body.clientHeight + 2;
+  }
+
+  function bindToggle(bodyID, toggleID, seqOf) {
+    $(toggleID).addEventListener("click", () => {
+      const seq = seqOf();
+      if (expanded.has(seq)) expanded.delete(seq); else expanded.add(seq);
+      clamp(bodyID, toggleID, seq);
+    });
+  }
+
   function renderAmendment() {
     const a = room.amendment;
     $("amendment").hidden = !a;
     if (!a) return;
     $("amd-meta").textContent = "#" + a.seq + " by " + sideName(a.side) + (a.replaces ? ", replaces item " + a.replaces : "");
     $("amd-body").textContent = a.text;
+    clamp("amd-body", "amd-toggle", a.seq);
     $("amd-votes").textContent = room.sides.map((s) => sideName(s.label) + ": " + (a.votes[s.label] || "not voted")).join(" · ");
     $("amd-vote").hidden = !!a.votes[room.you.side];
   }
@@ -130,6 +151,7 @@
     if (!ev) return;
     $("res-meta").textContent = "#" + r.seq + " by " + sideName(r.side) + ", charter v" + r.charter_version;
     $("res-body").textContent = ev.body;
+    clamp("res-body", "res-toggle", r.seq);
     let state;
     if (room.phase === "approval") {
       state = "Agreed by the agents. Approvals: " + room.sides.map((s) =>
@@ -179,6 +201,32 @@
     if (room.close_reason === "expired") text = "Closed: the room expired.";
     if (room.close_note) text += " " + room.close_note;
     $("closed").textContent = text;
+    renderPublishing();
+  }
+
+  function renderPublishing() {
+    const box = $("publishing");
+    box.hidden = room.phase !== "closed" || room.you.actor !== "human";
+    if (box.hidden) return;
+    const mine = room.sides.find((s) => s.label === room.you.side);
+    const voted = !!(mine && mine.publish_at);
+    const url = location.origin + base + "/p/" + roomID;
+    let text;
+    if (room.published_at) {
+      text = "Public: anyone with the link can read this room, and it is listed on the home page.";
+    } else {
+      const waiting = room.sides.filter((s) => !s.publish_at).map((s) => sideName(s.label));
+      text = voted
+        ? "You agreed to publish. Waiting for: " + waiting.join(", ") + "."
+        : "Private. Publish to let anyone read the conversation and the minutes; every side has to agree.";
+    }
+    $("publish-text").textContent = text;
+    $("public-link-row").hidden = !room.published_at;
+    $("public-link").textContent = url;
+    $("public-link").href = url;
+    $("publish").hidden = voted || !!room.published_at;
+    $("unpublish").hidden = !voted && !room.published_at;
+    $("unpublish").textContent = room.published_at ? "Unpublish" : "Withdraw";
   }
 
   let mandateDirty = false;
@@ -240,7 +288,21 @@
       const own = s.label === room.you.side;
       const name = s.name || "Side " + s.label;
       const card = el("section", "linkcard side-" + s.label);
-      card.append(el("h3", "", "Side " + s.label + " · " + name + (own ? " (you)" : "")));
+      const head = el("div", "row");
+      head.append(el("h3", "", "Side " + s.label + " · " + name + (own ? " (you)" : "")));
+      if (!closed && (own || !(s.human_joined_at || s.agent_joined_at))) {
+        const rn = el("button", "toggle", "Rename");
+        rn.type = "button";
+        rn.title = own ? "Change the name of your side, as everyone sees it"
+          : "Name this side before you send the links; once they enter, they name themselves";
+        rn.addEventListener("click", guard(async () => {
+          const v = window.prompt("Name of side " + s.label, s.name || "");
+          if (v === null || !v.trim()) return;
+          await call("POST", "/name", own ? { name: v.trim() } : { side: s.label, name: v.trim() });
+        }));
+        head.append(rn);
+      }
+      card.append(head);
       if (own) {
         if (box.dataset.mylink) {
           card.append(linkRow("link-me", "human", "For you, on your other devices", box.dataset.mylink));
@@ -287,6 +349,9 @@
       case "phase": return "Phase: " + d.to;
       case "ready": return sideName(e.side) + " pressed Start agents";
       case "unready": return sideName(e.side) + " withdrew the start";
+      case "publish_vote": return sideName(e.side) + " agreed to publish the room";
+      case "published": return "Published: anyone can read this room";
+      case "unpublished": return sideName(e.side) + " withdrew publication";
       case "paused":
         if (d.kind === "budget") return "Paused: side " + d.side + " used its turn budget";
         return who(e) + " raised a hand" + (e.body ? ": " + e.body : "");
@@ -453,6 +518,13 @@
       if ($("private").disabled) $("private").checked = false;
     });
 
+    bindToggle("amd-body", "amd-toggle", () => room.amendment && room.amendment.seq);
+    bindToggle("res-body", "res-toggle", () => room.resolution && room.resolution.seq);
+    $("publish").addEventListener("click", guard(() => call("POST", "/publish", {})));
+    $("unpublish").addEventListener("click", guard(async () => {
+      if (room.published_at && !window.confirm("The room stops being public for everyone. Continue?")) return;
+      await call("POST", "/unpublish", {});
+    }));
     $("ready").addEventListener("click", guard(() => call("POST", "/ready", {})));
     $("unready").addEventListener("click", guard(() => call("POST", "/unready", {})));
 

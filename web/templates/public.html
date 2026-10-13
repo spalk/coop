@@ -1,0 +1,47 @@
+{{template "head" .}}
+{{with .Minutes}}
+<title>{{.Room.Topic}} · coop</title>
+</head>
+<body class="page">
+<main class="public">
+  <p class="muted"><a href="{{$.BasePath}}/">coop</a> · published room</p>
+  <h1>{{.Room.Topic}}</h1>
+  {{if .Room.Description}}<p class="lead">{{.Room.Description}}</p>{{end}}
+  <p class="muted">
+    {{range $i, $s := .Room.Sides}}{{if $i}} · {{end}}<b class="side-{{$s.Label}}">{{sideName $.Minutes.Room $s.Label}}</b>{{end}}
+    · opened {{hhmm .Room.CreatedAt}}{{with .Room.ClosedAt}} · closed {{hhmm .}}{{end}}{{if .Room.CloseReason}} ({{.Room.CloseReason}}){{end}}
+  </p>
+  <p class="row">
+    <a href="{{$.BasePath}}/p/{{$.RoomID}}/minutes.md">Minutes (Markdown)</a>
+    <a href="{{$.BasePath}}/p/{{$.RoomID}}/minutes.json">JSON</a>
+  </p>
+
+  {{with .Resolution}}
+  <section class="notice">
+    <div class="label">Decision · resolution #{{.Seq}} by {{sideName $.Minutes.Room .Side}} · {{.Status}}</div>
+    <div class="body text">{{.Body}}</div>
+  </section>
+  {{end}}
+
+  {{if .Room.Charter.Items}}
+  <section class="notice">
+    <div class="label">Charter v{{.Room.Charter.Version}}</div>
+    <ol>{{range .Room.Charter.Items}}<li>{{.Text}}</li>{{end}}</ol>
+  </section>
+  {{end}}
+
+  <h2>Conversation</h2>
+  <div class="feed static">
+  {{range .Events}}{{if .IsMessage}}
+    <article class="msg {{.Actor}} side-{{.Side}} {{align .Side}}{{if or (eq .Type "resolution") (eq .Type "amendment")}} key{{end}}">
+      <div class="meta"><span class="who">{{sideName $.Minutes.Room .Side}}, {{.Actor}}</span><span class="kind">{{.Type}}</span>{{if .Re}}<span>re #{{.Re}}</span>{{end}}<span>{{hhmm .TS}} #{{.Seq}}</span></div>
+      {{if .Summary}}<div class="summary">{{.Summary}}</div>{{end}}
+      <div class="text">{{.Body}}</div>
+    </article>
+  {{end}}{{end}}
+  </div>
+  {{if .ChainHead}}<p class="muted mono">Chain head {{.ChainHead}}</p>{{end}}
+</main>
+{{end}}
+</body>
+</html>

@@ -100,6 +100,9 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /i/{token}", s.invitation)
 	m.HandleFunc("POST /i/{token}", s.claim)
 	m.HandleFunc("GET /r/{id}", s.roomPage)
+	m.HandleFunc("GET /p/{id}", s.publicPage)
+	m.HandleFunc("GET /p/{id}/minutes.md", s.published(s.minutesMD))
+	m.HandleFunc("GET /p/{id}/minutes.json", s.published(s.minutesJSON))
 
 	m.HandleFunc("POST /api/rooms", s.createRoom)
 	m.HandleFunc("GET /api/rooms/{id}", s.withRoom(s.getRoom))
@@ -118,6 +121,8 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/rooms/{id}/close", s.withRoom(s.closeRoom))
 	m.HandleFunc("PUT /api/rooms/{id}/mandate", s.withRoom(s.mandate))
 	m.HandleFunc("POST /api/rooms/{id}/name", s.withRoom(s.rename))
+	m.HandleFunc("POST /api/rooms/{id}/publish", s.withRoom(s.publish))
+	m.HandleFunc("POST /api/rooms/{id}/unpublish", s.withRoom(s.unpublish))
 	m.HandleFunc("POST /api/rooms/{id}/agent-link", s.withRoom(s.issueAgentLink))
 	m.HandleFunc("POST /api/rooms/{id}/sides/{side}/invitation", s.withRoom(s.issueInvitation))
 	m.HandleFunc("POST /api/rooms/{id}/sides/{side}/links", s.withRoom(s.issueSideLinks))
@@ -196,6 +201,18 @@ func (s *Server) withRoom(h roomHandler) http.HandlerFunc {
 			return
 		}
 		h(w, r, p)
+	}
+}
+
+// published serves a read-only handler to anyone, for published rooms only.
+func (s *Server) published(h roomHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if err := s.svc.Published(id); err != nil {
+			writeError(w, err)
+			return
+		}
+		h(w, r, room.Principal{RoomID: id, Side: -1})
 	}
 }
 

@@ -22,9 +22,13 @@ import (
 //go:embed schema.sql
 var schema string
 
-// schemaVersion 2 is protocol v2. Older room data is dropped on upgrade
-// (host keys are kept); see docs/protocol.md.
-const schemaVersion = 2
+// schemaVersion is the current database layout. Room data older than
+// protocolV2 is dropped on upgrade (host keys are kept); see docs/protocol.md.
+// Later versions only add columns, so rooms survive the upgrade.
+const (
+	protocolV2    = 2
+	schemaVersion = 3 // 3: publishing (rooms.published_at, sides.publish_at)
+)
 
 // Service owns the database and applies the room rules. Writes are
 // serialized by mu; SQLite runs in WAL mode so reads proceed concurrently.
@@ -57,7 +61,7 @@ func migrate(db *sql.DB) error {
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
 		return err
 	}
-	if v < schemaVersion {
+	if v < protocolV2 {
 		for _, t := range []string{"approvals", "sessions", "marks", "charter", "events", "credentials", "sides", "rooms"} {
 			if _, err := db.Exec(`DROP TABLE IF EXISTS ` + t); err != nil {
 				return fmt.Errorf("upgrade: %w", err)
@@ -66,6 +70,16 @@ func migrate(db *sql.DB) error {
 	}
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("init schema: %w", err)
+	}
+	if v == protocolV2 {
+		for _, q := range []string{
+			`ALTER TABLE rooms ADD COLUMN published_at INTEGER`,
+			`ALTER TABLE sides ADD COLUMN publish_at INTEGER`,
+		} {
+			if _, err := db.Exec(q); err != nil {
+				return fmt.Errorf("upgrade to 3: %w", err)
+			}
+		}
 	}
 	_, err := db.Exec(`PRAGMA user_version = ` + strconv.Itoa(schemaVersion))
 	return err
@@ -156,6 +170,7 @@ type roomRow struct {
 	CreatedAt         int64
 	ExpiresAt         int64
 	ClosedAt          sql.NullInt64
+	PublishedAt       sql.NullInt64
 	CloseReason       string
 	CloseNote         string
 	Phase             string
@@ -183,6 +198,7 @@ type sideRow struct {
 	ReadyAt       sql.NullInt64
 	AgentJoinedAt sql.NullInt64
 	HumanJoinedAt sql.NullInt64
+	PublishAt     sql.NullInt64
 }
 
 type querier interface {
@@ -192,11 +208,11 @@ type querier interface {
 
 func loadRoom(q querier, id string) (*roomRow, error) {
 	r := &roomRow{}
-	err := q.QueryRow(`SELECT id, topic, description, public, anonymous, created_at, expires_at, closed_at,
+	err := q.QueryRow(`SELECT id, topic, description, public, anonymous, created_at, expires_at, closed_at, published_at,
 		close_reason, close_note, phase, floor, turn_budget, pause_kind, pause_side, pause_actor, pause_reason,
 		pending_resolution, resolution_side, resolution_charter, pending_amendment, charter_version, last_seq, last_hash
 		FROM rooms WHERE id = ?`, id).Scan(
-		&r.ID, &r.Topic, &r.Description, &r.Public, &r.Anonymous, &r.CreatedAt, &r.ExpiresAt, &r.ClosedAt,
+		&r.ID, &r.Topic, &r.Description, &r.Public, &r.Anonymous, &r.CreatedAt, &r.ExpiresAt, &r.ClosedAt, &r.PublishedAt,
 		&r.CloseReason, &r.CloseNote, &r.Phase, &r.Floor, &r.TurnBudget, &r.PauseKind, &r.PauseSide, &r.PauseActor,
 		&r.PauseReason, &r.PendingResolution, &r.ResolutionSide, &r.ResolutionCharter, &r.PendingAmendment,
 		&r.CharterVersion, &r.LastSeq, &r.LastHash)
@@ -206,7 +222,7 @@ func loadRoom(q querier, id string) (*roomRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(`SELECT name, mandate, turns_used, claimed_at, ready_at, agent_joined_at, human_joined_at
+	rows, err := q.Query(`SELECT name, mandate, turns_used, claimed_at, ready_at, agent_joined_at, human_joined_at, publish_at
 		FROM sides WHERE room_id = ? ORDER BY idx`, id)
 	if err != nil {
 		return nil, err
@@ -215,7 +231,7 @@ func loadRoom(q querier, id string) (*roomRow, error) {
 	for rows.Next() {
 		var sr sideRow
 		if err := rows.Scan(&sr.Name, &sr.Mandate, &sr.TurnsUsed, &sr.ClaimedAt, &sr.ReadyAt,
-			&sr.AgentJoinedAt, &sr.HumanJoinedAt); err != nil {
+			&sr.AgentJoinedAt, &sr.HumanJoinedAt, &sr.PublishAt); err != nil {
 			return nil, err
 		}
 		r.Sides = append(r.Sides, sr)
@@ -440,6 +456,7 @@ func statusOf(q querier, r *roomRow, viewer *Principal) (Status, error) {
 		ID: r.ID, Topic: r.Topic, Description: r.Description, Public: r.Public, Phase: r.Phase,
 		TurnBudget: r.TurnBudget, CreatedAt: fromMS(r.CreatedAt), ExpiresAt: fromMS(r.ExpiresAt),
 		ClosedAt: nullTime(r.ClosedAt), CloseReason: r.CloseReason, CloseNote: r.CloseNote, LastSeq: r.LastSeq,
+		PublishedAt: nullTime(r.PublishedAt),
 	}
 	var err error
 	if st.Charter, err = loadCharter(q, r.ID, r.CharterVersion); err != nil {
@@ -494,7 +511,7 @@ func statusOf(q querier, r *roomRow, viewer *Principal) (Status, error) {
 	}
 	for i, sr := range r.Sides {
 		st.Sides = append(st.Sides, SideInfo{Label: Label(i), Name: sr.Name, Claimed: sr.ClaimedAt.Valid,
-			TurnsUsed: sr.TurnsUsed, ReadyAt: nullTime(sr.ReadyAt),
+			TurnsUsed: sr.TurnsUsed, ReadyAt: nullTime(sr.ReadyAt), PublishAt: nullTime(sr.PublishAt),
 			AgentJoinedAt: nullTime(sr.AgentJoinedAt), HumanJoinedAt: nullTime(sr.HumanJoinedAt)})
 	}
 	if viewer != nil && viewer.Side < n {

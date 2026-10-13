@@ -31,6 +31,22 @@ var funcs = template.FuncMap{
 		return fmt.Sprintf("%d days", int(d.Hours()/24))
 	},
 	"join": strings.Join,
+	// sideName is "Side B (Name)" or "Side B" for a side label of st.
+	"sideName": func(st room.Status, label string) string {
+		for _, sd := range st.Sides {
+			if sd.Label == label && sd.Name != "" {
+				return "Side " + label + " (" + sd.Name + ")"
+			}
+		}
+		return "Side " + label
+	},
+	"align": func(label string) string {
+		if label == "A" {
+			return "left"
+		}
+		return "right"
+	},
+	"hhmm": func(t time.Time) string { return t.Format("2006-01-02 15:04 UTC") },
 }
 
 type pageData struct {
@@ -45,6 +61,7 @@ type pageData struct {
 	Handoff  string
 	HumanURL string
 	Rooms    []room.PublicRoom
+	Minutes  *room.Minutes
 	Open     int
 	Error    string
 }
@@ -85,6 +102,21 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.page(w, http.StatusOK, "home.html", pageData{Rooms: rooms, Open: open})
+}
+
+// publicPage shows a published room read-only: its public log and record.
+func (s *Server) publicPage(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := s.svc.Published(id); err != nil {
+		s.page(w, http.StatusNotFound, "invalid.html", pageData{})
+		return
+	}
+	m, err := s.svc.Minutes(id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	s.page(w, http.StatusOK, "public.html", pageData{RoomID: id, Minutes: &m})
 }
 
 // createForm creates a room from the home page; the browser becomes the

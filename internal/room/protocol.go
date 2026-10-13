@@ -13,6 +13,9 @@ const (
 	ThreadAccepted = "accepted"
 	ThreadRejected = "rejected"
 	ThreadDeferred = "deferred"
+	// ThreadSettled: still open or deferred when a resolution was approved;
+	// the approved resolution is the answer.
+	ThreadSettled = "settled"
 )
 
 // Move is one agent message in a thread.
@@ -213,13 +216,26 @@ func buildProtocol(st Status, evs []Event) Protocol {
 			}
 		case EventRenamed:
 			line(e, "renamed", side(e.Side)+" is now "+num(e, "name"))
+		case EventPublishVote:
+			line(e, "publish", side(e.Side)+" agreed to publish the room")
+		case EventPublished:
+			line(e, "publish", "Published: anyone can read this room")
+		case EventUnpublished:
+			line(e, "publish", side(e.Side)+" withdrew publication")
 		}
 	}
 
-	for _, t := range p.Threads {
-		if t.Status == ThreadOpen || t.Status == ThreadDeferred {
-			p.Open = append(p.Open, t.Seq)
+	approved := st.CloseReason == ReasonApproved
+	for i := range p.Threads {
+		t := &p.Threads[i]
+		if t.Status != ThreadOpen && t.Status != ThreadDeferred {
+			continue
 		}
+		if approved {
+			t.Status = ThreadSettled
+			continue
+		}
+		p.Open = append(p.Open, t.Seq)
 	}
 	var res *Event
 	status := ""

@@ -52,6 +52,9 @@ const (
 	EventPhase              = "phase"
 	EventReady              = "ready"
 	EventUnready            = "unready"
+	EventPublishVote        = "publish_vote"
+	EventPublished          = "published"
+	EventUnpublished        = "unpublished"
 	EventTurn               = "turn"
 	EventPaused             = "paused"
 	EventResumed            = "resumed"
@@ -173,6 +176,7 @@ type SideInfo struct {
 	ReadyAt       *time.Time `json:"ready_at,omitempty"`
 	AgentJoinedAt *time.Time `json:"agent_joined_at,omitempty"`
 	HumanJoinedAt *time.Time `json:"human_joined_at,omitempty"`
+	PublishAt     *time.Time `json:"publish_at,omitempty"`
 }
 
 // Pause describes why agents are paused.
@@ -243,6 +247,7 @@ type Status struct {
 	ClosedAt    *time.Time       `json:"closed_at,omitempty"`
 	CloseReason string           `json:"close_reason,omitempty"`
 	CloseNote   string           `json:"close_note,omitempty"`
+	PublishedAt *time.Time       `json:"published_at,omitempty"`
 	Sides       []SideInfo       `json:"sides"`
 	LastSeq     int64            `json:"last_seq"`
 	You         *Viewer          `json:"you,omitempty"`

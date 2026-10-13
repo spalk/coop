@@ -410,8 +410,10 @@ func (s *Service) MarkJoined(p Principal) error {
 	return err
 }
 
-// Rename sets the display name of the human's side.
-func (s *Service) Rename(p Principal, name string) error {
+// Rename sets the display name of a side: the human's own side (label ""
+// or its own label), or another side nobody of which has entered yet (the
+// creator naming the partner before handing over the links).
+func (s *Service) Rename(p Principal, label, name string) error {
 	if p.Actor != ActorHuman {
 		return ErrHumansOnly
 	}
@@ -426,11 +428,23 @@ func (s *Service) Rename(p Principal, name string) error {
 		if r.Phase == PhaseClosed {
 			return ErrClosed
 		}
-		if _, err := tx.Exec(`UPDATE sides SET name = ? WHERE room_id = ? AND idx = ?`, name, r.ID, p.Side); err != nil {
+		side := p.Side
+		if label != "" {
+			side = ParseLabel(label, len(r.Sides))
+			if side < 0 {
+				return badRequest("no side %q in this room", label)
+			}
+		}
+		if side != p.Side {
+			if sd := r.Sides[side]; sd.HumanJoinedAt.Valid || sd.AgentJoinedAt.Valid {
+				return errorf(http.StatusConflict, "already_joined", "side %s has entered the room and names itself", Label(side))
+			}
+		}
+		if _, err := tx.Exec(`UPDATE sides SET name = ? WHERE room_id = ? AND idx = ?`, name, r.ID, side); err != nil {
 			return err
 		}
-		ev := newEvent{Type: EventRenamed, Side: p.Side, Actor: p.Actor, To: -1, VisibleTo: -1,
-			Data: map[string]any{"name": name}}
+		ev := newEvent{Type: EventRenamed, Side: side, Actor: p.Actor, To: -1, VisibleTo: -1,
+			Data: map[string]any{"name": name, "by": Label(p.Side)}}
 		_, err := appendEvent(tx, r, now, ev)
 		return err
 	})

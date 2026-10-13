@@ -437,3 +437,78 @@ func TestSideLinks(t *testing.T) {
 		t.Fatalf("after B entered: want 409, got %d", code)
 	}
 }
+
+// A closed room becomes public only when every side agrees, and any side can
+// take it down again.
+func TestPublish(t *testing.T) {
+	e := newEnv(t, "")
+	r := e.setup()
+	api := "/api/rooms/" + r.id
+	if code, _ := e.do(r.humanA, "POST", api+"/publish", "", map[string]any{}); code != http.StatusConflict {
+		t.Fatalf("publish while open: want 409, got %d", code)
+	}
+	if code, out := e.do(r.humanA, "POST", api+"/close", "", map[string]any{"reason": "done"}); code != 200 {
+		t.Fatalf("close: %d %v", code, out)
+	}
+	if code, _ := e.do(nil, "POST", api+"/publish", r.agentA, map[string]any{}); code != http.StatusForbidden {
+		t.Fatalf("agent publishing: want 403, got %d", code)
+	}
+	if code, _ := e.do(r.humanA, "POST", api+"/publish", "", map[string]any{}); code != 200 {
+		t.Fatalf("publish A: %d", code)
+	}
+	if code, _ := e.get(nil, e.base+"/p/"+r.id, "text/html"); code != http.StatusNotFound {
+		t.Fatalf("public page with one vote: want 404, got %d", code)
+	}
+	if code, _ := e.do(r.humanB, "POST", api+"/publish", "", map[string]any{}); code != 200 {
+		t.Fatalf("publish B: %d", code)
+	}
+	code, page := e.get(nil, e.base+"/p/"+r.id, "text/html")
+	if code != 200 || !strings.Contains(page, "Orders export") {
+		t.Fatalf("public page: %d", code)
+	}
+	if code, md := e.get(nil, e.base+"/p/"+r.id+"/minutes.md", ""); code != 200 || !strings.Contains(md, "Minutes") {
+		t.Fatalf("public minutes: %d", code)
+	}
+	if _, home := e.get(nil, e.base+"/", "text/html"); !strings.Contains(home, "/p/"+r.id) {
+		t.Fatal("home page does not link the published room")
+	}
+	if code, _ := e.do(r.humanB, "POST", api+"/unpublish", "", map[string]any{}); code != 200 {
+		t.Fatalf("unpublish: %d", code)
+	}
+	if code, _ := e.get(nil, e.base+"/p/"+r.id+"/minutes.json", ""); code != http.StatusNotFound {
+		t.Fatalf("after unpublish: want 404, got %d", code)
+	}
+}
+
+// The creator may name another side until someone of it enters.
+func TestRenameOtherSide(t *testing.T) {
+	e := newEnv(t, "")
+	code, out := e.do(nil, "POST", "/api/rooms", "", map[string]any{
+		"topic": "Names", "sides": []map[string]string{{"name": "Dmitry"}, {"name": ""}},
+	})
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %v", code, out)
+	}
+	id := field(out, "room", "id").(string)
+	humanA := browser()
+	if res, err := humanA.Post(out["human_url"].(string), "", nil); err != nil || res.StatusCode != 200 {
+		t.Fatalf("human A enter: %v", err)
+	}
+	if code, _ := e.do(humanA, "POST", "/api/rooms/"+id+"/name", "", map[string]any{"side": "B", "name": "Vasya"}); code != 200 {
+		t.Fatalf("rename B: %d", code)
+	}
+	_, st := e.do(humanA, "GET", "/api/rooms/"+id, "", nil)
+	if n := field(st, "room", "sides").([]any)[1].(map[string]any)["name"]; n != "Vasya" {
+		t.Fatalf("side B name: %v", n)
+	}
+	code, links := e.do(humanA, "POST", "/api/rooms/"+id+"/sides/B/links", "", map[string]any{})
+	if code != 200 {
+		t.Fatalf("links: %d", code)
+	}
+	if res, err := browser().Post(links["human_url"].(string), "", nil); err != nil || res.StatusCode != 200 {
+		t.Fatalf("human B enter: %v", err)
+	}
+	if code, _ := e.do(humanA, "POST", "/api/rooms/"+id+"/name", "", map[string]any{"side": "B", "name": "X"}); code != http.StatusConflict {
+		t.Fatalf("rename entered side: want 409, got %d", code)
+	}
+}

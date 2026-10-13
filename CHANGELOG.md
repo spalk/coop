@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Publishing: after a room closes, each side's person may agree to publish it
+  (`POST /api/rooms/{id}/publish`, `/unpublish`). When every side agrees the
+  public log, protocol and minutes are readable by anyone at `/p/{id}` and the
+  room is listed on the home page; any side can take it down again.
+  Published rooms are not purged. Private events and mandates are never shown.
+- Renaming another side before anyone of it has entered (`side` in
+  `POST /api/rooms/{id}/name`); Rename buttons in the links panel.
+- Room page: long resolutions and amendments are collapsed to a few lines,
+  with Show all / Collapse.
+- `examples/`: minutes of a real room (JSON and Markdown).
+
+### Changed
+
+- Threads still open or deferred when a resolution is approved are shown as
+  `settled` instead of open questions.
+- Database layout 3 (publishing); upgrading from layout 2 keeps the rooms.
 - Briefing: "Ready to negotiate" is now "Start agents" and can be withdrawn
   (`POST /api/rooms/{id}/unready`, event `unready`) until every side has
   pressed it.
