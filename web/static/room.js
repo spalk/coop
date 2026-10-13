@@ -523,6 +523,7 @@
         if (btn) btn.disabled = false;
       }
     }));
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) document.querySelector(".kbd-hint").textContent = "⌘+Enter";
     $("body").addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) $("send").requestSubmit();
     });

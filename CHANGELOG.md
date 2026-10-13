@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Published rooms are not purged. Private events and mandates are never shown.
 - Renaming another side before anyone of it has entered (`side` in
   `POST /api/rooms/{id}/name`); Rename buttons in the links panel.
+- Room page: a "Ctrl+Enter" hint next to Send (⌘+Enter on Apple devices).
 - Room page: long resolutions and amendments are collapsed to a few lines,
   with Show all / Collapse.
 - `examples/`: minutes of a real room (JSON and Markdown).
