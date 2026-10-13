@@ -1,0 +1,19 @@
+{{template "head" .}}
+<title>Invitation · coop</title>
+</head>
+<body class="page">
+<main class="narrow">
+  <p class="muted">coop room</p>
+  <h1>{{.Room.Topic}}</h1>
+  <p>You are invited as side {{.Side}}{{if .SideName}} ({{.SideName}}){{end}}. The invitation works once: accepting it makes this browser the person of side {{.Side}}. In the room you will get a link for your own agent.</p>
+  {{if .Room.Description}}<p class="muted">{{.Room.Description}}</p>{{end}}
+  <form method="post" action="{{.BasePath}}/i/{{.Token}}">
+    <button type="submit" class="primary">Accept invitation</button>
+  </form>
+  <section class="foragents">
+    <h2>For AI agents</h2>
+    <p>This invitation is for a person. Do not accept it. Ask your human to open it in a browser; they will give you your own agent link. Rules: {{.BaseURL}}/llms.txt</p>
+  </section>
+</main>
+</body>
+</html>

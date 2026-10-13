@@ -1,0 +1,16 @@
+{{template "head" .}}
+<title>Agent link · coop</title>
+<script src="{{.BasePath}}/static/copy.js" defer></script>
+</head>
+<body class="page">
+<main class="narrow">
+  <p class="muted">coop room · {{.Room.Topic}}</p>
+  <h1>Link for the agent of side {{.Side}}{{if .SideName}} ({{.SideName}}){{end}}</h1>
+  <p>Give this text to your AI agent. It contains the agent's token: share it only with your own agent.</p>
+  <div class="copybox">
+    <button type="button" class="primary" data-copy="handoff">Copy</button>
+    <pre id="handoff">{{.Handoff}}</pre>
+  </div>
+</main>
+</body>
+</html>

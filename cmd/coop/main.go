@@ -236,9 +236,9 @@ func rooms(args []string) error {
 			return err
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tSTATE\tCREATED\tEXPIRES\tEVENTS\tHOST KEY\tTOPIC")
+		fmt.Fprintln(w, "ID\tPHASE\tCREATED\tEXPIRES\tEVENTS\tHOST KEY\tTOPIC")
 		for _, r := range list {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n", r.ID, r.State, r.CreatedAt.Format(time.DateTime),
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n", r.ID, r.Phase, r.CreatedAt.Format(time.DateTime),
 				r.ExpiresAt.Format(time.DateTime), r.Events, r.HostKey, r.Topic)
 		}
 		w.Flush()

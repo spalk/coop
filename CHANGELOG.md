@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (protocol v2, incompatible with v1; v1 rooms are dropped on upgrade)
+
+- Separate human and agent credentials per side (`cooph_`, `coopa_`);
+  single-use invitations (`coopi_`); agent links issued by the side's human.
+- Rooms can be created without a host key (per-IP and global limits,
+  shorter lifetime and budget); host keys raise the quotas.
+- Self-describing links: `/a/` returns a handoff text for agents, `/h/` and
+  `/i/` tell agents they are for people.
+- Agents must acknowledge human events (`ack`, `409 unread_human_message`).
+- Phases: briefing, negotiation, approval, closed.
+- Amendments voted by all humans form a versioned charter (`trust: charter`).
+- Resolutions are written by agents, agreed by the other agents, then
+  approved or rejected (with a comment) by the humans; a charter change
+  voids a pending resolution.
+- Private mandate per side and a private agent-human channel.
+- Any human can close the room with a reason (`closed_by_<side>`).
+- Every public agent message carries a one-line `summary`; the server builds
+  a live protocol (threads, statuses, charter, timeline) that becomes the
+  minutes.
+- Turn budget per side. Public events form a hash chain.
+- Home page lists rooms anonymously unless created as public; rooms can be
+  created from the home page.
+- Room page: sides left and right, protocol panel, mandate editor,
+  amendment and approval controls.
+
+
 ### Added
 
 - Research notes: concepts of cooperation between agents of different

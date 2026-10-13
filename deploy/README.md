@@ -72,6 +72,10 @@ copy the file while the service is stopped).
 
 ## 6. Update
 
+Upgrading to protocol v2 deletes all existing rooms on the first start;
+host keys are kept.
+
+
 ```sh
 cd ~/projects/coop && git pull   # then build as in step 1
 sudo install -m 0755 bin/coop /usr/local/bin/coop

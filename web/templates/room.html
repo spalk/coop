@@ -1,11 +1,12 @@
 {{template "head" .}}
 <title>coop</title>
+<script src="{{.BasePath}}/static/copy.js" defer></script>
 <script src="{{.BasePath}}/static/room.js" defer></script>
 </head>
 <body class="room" data-base="{{.BasePath}}" data-room="{{.RoomID}}">
 <div id="noaccess" class="narrow" hidden>
   <h1>No access</h1>
-  <p>Open your invitation link to enter this room.</p>
+  <p>Open your link or invitation to enter this room.</p>
 </div>
 <div id="app" hidden>
   <header class="bar">
@@ -14,55 +15,107 @@
       <span class="muted" id="you"></span>
     </div>
     <div class="status" id="status"></div>
-    <div class="sides" id="sides"></div>
   </header>
 
-  <section class="notice" id="pause" hidden>
-    <div id="pause-text"></div>
-    <form id="resume" class="row" hidden>
-      <label>Floor to <select id="resume-floor"></select></label>
-      <label>Add turns <input id="resume-turns" type="number" min="0" max="500" value="0" inputmode="numeric"></label>
-      <button type="submit" class="primary">Resume</button>
-    </form>
-  </section>
+  <div class="layout">
+    <section class="main">
+      <section class="notice" id="briefing" hidden>
+        <div class="label">Briefing</div>
+        <div id="briefing-text"></div>
+        <div class="row"><button id="ready" class="primary">Ready to negotiate</button></div>
+      </section>
 
-  <section class="notice" id="resolution" hidden>
-    <div class="label">Resolution <span id="res-meta" class="muted"></span></div>
-    <div class="body" id="res-body"></div>
-    <div class="row">
-      <span id="res-approvals" class="muted"></span>
-      <button id="approve" class="primary" hidden>Approve</button>
-    </div>
-  </section>
+      <section class="notice" id="amendment" hidden>
+        <div class="label">Amendment <span id="amd-meta" class="muted"></span></div>
+        <div class="body" id="amd-body"></div>
+        <div class="muted" id="amd-votes"></div>
+        <form class="row" id="amd-vote">
+          <input id="amd-comment" type="text" maxlength="500" placeholder="Comment">
+          <button type="button" class="primary" data-accept="true">Accept</button>
+          <button type="button" data-accept="false">Reject</button>
+        </form>
+      </section>
 
-  <section class="notice" id="closed" hidden></section>
+      <section class="notice" id="resolution" hidden>
+        <div class="label">Resolution <span id="res-meta" class="muted"></span></div>
+        <div class="body" id="res-body"></div>
+        <div class="muted" id="res-state"></div>
+        <form class="row" id="res-decide">
+          <input id="res-comment" type="text" maxlength="500" placeholder="Comment (required to reject)">
+          <button type="button" class="primary" id="approve">Approve</button>
+          <button type="button" id="reject">Reject</button>
+        </form>
+      </section>
 
-  <main id="feed" class="feed" aria-live="polite"></main>
+      <section class="notice" id="pause" hidden>
+        <div id="pause-text"></div>
+        <form id="resume" class="row" hidden>
+          <label>Floor to <select id="resume-floor"></select></label>
+          <label>Add turns <input id="resume-turns" type="number" min="0" max="500" value="0" inputmode="numeric"></label>
+          <button type="submit" class="primary">Resume</button>
+        </form>
+      </section>
 
-  <footer class="composer" id="composer">
-    <form id="raise" class="row" hidden>
-      <input id="raise-reason" type="text" maxlength="500" placeholder="Reason">
-      <button type="submit" class="primary">Pause agents</button>
-      <button type="button" id="raise-cancel">Cancel</button>
-    </form>
-    <form id="send">
-      <textarea id="body" rows="3" maxlength="8192" placeholder="Message" required></textarea>
-      <div class="row">
-        <select id="type" aria-label="Message type">
-          <option value="say">say</option>
-          <option value="ask">ask</option>
-          <option value="propose">propose</option>
-          <option value="resolution">resolution</option>
-        </select>
-        <button type="submit" class="primary">Send</button>
-        <span class="spacer"></span>
-        <button type="button" id="raise-open">Raise hand</button>
-        <a id="export-md" href="#">Minutes</a>
-        <a id="export-json" href="#">JSON</a>
-      </div>
-      <div id="error" class="error" role="alert"></div>
-    </form>
-  </footer>
+      <section class="notice closed" id="closed" hidden></section>
+
+      <main id="feed" class="feed" aria-live="polite"></main>
+
+      <footer class="composer" id="composer">
+        <form id="send">
+          <textarea id="body" rows="3" maxlength="8192" placeholder="Message" required></textarea>
+          <div class="row">
+            <select id="type" aria-label="Message type">
+              <option value="say">Message</option>
+              <option value="amendment">Amendment</option>
+            </select>
+            <label class="check"><input type="checkbox" id="private"> Only my side</label>
+            <button type="submit" class="primary">Send</button>
+            <span class="spacer"></span>
+            <button type="button" id="pause-open">Pause agents</button>
+            <button type="button" id="close-open">Close room</button>
+          </div>
+          <div class="row" id="close-row" hidden>
+            <input id="close-reason" type="text" maxlength="500" placeholder="Reason for closing">
+            <button type="button" class="primary" id="close-confirm">Close room</button>
+            <button type="button" id="close-cancel">Cancel</button>
+          </div>
+          <div id="error" class="error" role="alert"></div>
+        </form>
+      </footer>
+    </section>
+
+    <aside class="panel">
+      <details open>
+        <summary>Protocol</summary>
+        <div id="protocol"></div>
+      </details>
+      <details open>
+        <summary>Your side</summary>
+        <div class="stack">
+          <label>Mandate <span class="muted">(your side only)</span>
+            <textarea id="mandate" rows="5" maxlength="8192"></textarea>
+          </label>
+          <div class="row"><button type="button" id="mandate-save">Save mandate</button><span id="mandate-state" class="muted"></span></div>
+          <div class="row"><button type="button" id="agent-link">Link for your agent</button></div>
+          <div class="copybox" id="handoff-box" hidden>
+            <button type="button" class="primary" data-copy="handoff">Copy</button>
+            <pre id="handoff"></pre>
+            <p class="muted">A new link replaces the previous one.</p>
+          </div>
+          <div id="invites"></div>
+          {{if .HumanURL}}<div class="copybox">
+            <span class="muted">Your link, for your other devices</span>
+            <button type="button" data-copy="mylink">Copy</button>
+            <code id="mylink">{{.HumanURL}}</code>
+          </div>{{end}}
+        </div>
+      </details>
+      <details>
+        <summary>Export</summary>
+        <div class="row"><a id="export-md" href="#">Minutes (Markdown)</a> <a id="export-json" href="#">JSON</a></div>
+      </details>
+    </aside>
+  </div>
 </div>
 </body>
 </html>

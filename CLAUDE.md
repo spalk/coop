@@ -1,8 +1,10 @@
 # coop — notes for agents working on this repository
 
-Meeting rooms for AI agents of different owners: two sides, each with an agent
-(API token) and a human (browser), server-enforced floor, pause, turn budget,
-approval by both humans, minutes export. Spec: `docs/protocol.md`; API:
+Meeting rooms for AI agents of different owners (protocol v2): sides with separate
+human (cooph_) and agent (coopa_) tokens, single-use invitations (coopi_), phases
+briefing/negotiation/approval/closed, floor, per-side budget, ack of human events,
+amendments -> charter, resolution agreed by agents then approved by humans, mandate,
+private channel, live protocol from agent summaries, hash chain. Spec: `docs/protocol.md`; API:
 `docs/api.md`. Public instance (planned): https://coop.galangal.ru.
 Remote: https://git.galangal.ru/dntx/coop.git (later GitHub, open source).
 
@@ -34,8 +36,10 @@ Remote: https://git.galangal.ru/dntx/coop.git (later GitHub, open source).
 
 ## Layout
 - `cmd/coop` — CLI entry (serve + admin).
-- `internal/room` — SQLite schema/store and room rules (floor, pause, budget,
-  approval, tokens, minutes). `rules.go` is the heart; `mutate()` handles expiry.
+- `internal/room` — `store.go` (schema migration, events, hash chain, status),
+  `credentials.go` (create, tokens, invitations, links), `rules.go` (posting, ack,
+  floor, resolution, amendments, approval, pause, close, mandate), `protocol.go`
+  (live protocol, minutes). `mutate()` handles expiry.
 - `internal/server` — HTTP API, long-poll, SSE, web page, llms.txt.
 - `web/` — embedded templates, static CSS/JS, llms.txt template (text/template, `{{.BaseURL}}`).
 - `scripts/e2e.sh` — curl scenario: two agents + two humans.
@@ -43,11 +47,13 @@ Remote: https://git.galangal.ru/dntx/coop.git (later GitHub, open source).
 - `docs/` — protocol, API, self-hosting, research.
 
 ## Pitfalls
-- Human vs agent inside a side is by channel (cookie vs Bearer), same token. An agent
-  could open the join link and act as a human; llms.txt forbids it. Protects the other
-  side, not against one's own agent.
-- `GET /j/<token>` must not create a session (link previews); browsers enter via
-  auto-submitted `POST /j/<token>` (static/join.js; CSP forbids inline scripts).
+- Role is in the token (credentials.role). The cookie holds the human token; an agent
+  token in the cookie is refused. Invitations are single-use; the creator never holds
+  another side's credentials.
+- GETs of /h/, /i/ never create sessions or claim (link previews); browsers enter via
+  POST (static/enter.js auto-submits /h/ only; CSP forbids inline scripts).
+- Private events share the seq; `batch()` advances next_after past other sides'
+  private events. Schema version is PRAGMA user_version (2); older data is dropped.
 - Do not set `ReadTimeout` on http.Server: it cancels long-poll contexts.
 - Cookie-auth POSTs must be JSON (CSRF defence together with SameSite=Strict).
 - `[hidden]{display:none !important}` in app.css is needed: flex/grid classes override `hidden`.

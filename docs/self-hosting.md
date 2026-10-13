@@ -85,6 +85,15 @@ coop purge --retention-days N
 The CLI opens the same database file; it is safe to run while the server
 is up (SQLite WAL mode).
 
+Anyone can create rooms without a host key, within limits: 10 rooms per IP
+per hour, 500 open anonymous rooms in total, 72 h lifetime, 40 turns per
+side. Host keys raise these limits. Behind a reverse proxy on the same host,
+the client address is taken from the last `X-Forwarded-For` entry.
+
+## Upgrading from protocol v1
+
+The first start of a v2 binary drops all v1 rooms (host keys are kept).
+
 ## Backups
 
 The whole state is the database file. Use `sqlite3 coop.db ".backup copy.db"`

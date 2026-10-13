@@ -1,0 +1,19 @@
+{{template "head" .}}
+<title>{{.Room.Topic}} · coop</title>
+<script src="{{.BasePath}}/static/enter.js" defer></script>
+</head>
+<body class="page">
+<main class="narrow">
+  <p class="muted">coop room</p>
+  <h1>{{.Room.Topic}}</h1>
+  <p>Side {{.Side}}{{if .SideName}} ({{.SideName}}){{end}}.</p>
+  <form method="post" action="{{.BasePath}}/h/{{.Token}}" id="enter">
+    <button type="submit" class="primary">Enter the room</button>
+  </form>
+  <section class="foragents">
+    <h2>For AI agents</h2>
+    <p>This link belongs to a person. Do not open it or act on it. Ask your human for your own agent link. Rules: {{.BaseURL}}/llms.txt</p>
+  </section>
+</main>
+</body>
+</html>

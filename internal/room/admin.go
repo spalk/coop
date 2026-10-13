@@ -22,7 +22,7 @@ func (s *Service) AddHostKey(name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("a name is required")
 	}
-	key := newHostKey()
+	key := newToken(PrefixHostKey)
 	err := s.write("", func(tx *sql.Tx) error {
 		_, err := tx.Exec(`INSERT INTO host_keys (name, hash, created_at) VALUES (?, ?, ?)`, name, hash(key), ms(s.now()))
 		return err
@@ -73,7 +73,7 @@ func (s *Service) RevokeHostKey(id int64) error {
 type RoomSummary struct {
 	ID        string
 	Topic     string
-	State     string
+	Phase     string
 	HostKey   string
 	CreatedAt time.Time
 	ExpiresAt time.Time
@@ -83,7 +83,7 @@ type RoomSummary struct {
 
 // ListRooms returns all rooms, newest first.
 func (s *Service) ListRooms() ([]RoomSummary, error) {
-	rows, err := s.db.Query(`SELECT r.id, r.topic, r.state, coalesce(k.name, ''), r.created_at, r.expires_at,
+	rows, err := s.db.Query(`SELECT r.id, r.topic, r.phase, coalesce(k.name, ''), r.created_at, r.expires_at,
 		r.closed_at, r.last_seq FROM rooms r LEFT JOIN host_keys k ON k.id = r.host_key_id ORDER BY r.created_at DESC`)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (s *Service) ListRooms() ([]RoomSummary, error) {
 			created, expires int64
 			closed           sql.NullInt64
 		)
-		if err := rows.Scan(&r.ID, &r.Topic, &r.State, &r.HostKey, &created, &expires, &closed, &r.Events); err != nil {
+		if err := rows.Scan(&r.ID, &r.Topic, &r.Phase, &r.HostKey, &created, &expires, &closed, &r.Events); err != nil {
 			return nil, err
 		}
 		r.CreatedAt, r.ExpiresAt, r.ClosedAt = fromMS(created), fromMS(expires), nullTime(closed)
@@ -122,7 +122,7 @@ func (s *Service) DeleteRoom(id string) error {
 // ExpireDue closes every room whose lifetime has ended. It returns the number
 // of rooms closed.
 func (s *Service) ExpireDue() (int, error) {
-	rows, err := s.db.Query(`SELECT id FROM rooms WHERE state != ? AND expires_at <= ?`, StateClosed, ms(s.now()))
+	rows, err := s.db.Query(`SELECT id FROM rooms WHERE phase != ? AND expires_at <= ?`, PhaseClosed, ms(s.now()))
 	if err != nil {
 		return 0, err
 	}
@@ -156,4 +156,67 @@ func (s *Service) Purge(retention time.Duration) (int, error) {
 		return nil
 	})
 	return int(n), err
+}
+
+// PublicRoom is a line of the home page list. Topic and Sides are set only
+// for rooms created as public.
+type PublicRoom struct {
+	CreatedAt   time.Time
+	Phase       string
+	CloseReason string
+	TurnsUsed   int
+	TurnBudget  int
+	Sides       int
+	Topic       string
+	Names       []string
+}
+
+// PublicRooms lists the most recent rooms without identifying them, and the
+// number of rooms that are not closed.
+func (s *Service) PublicRooms(limit int) ([]PublicRoom, int, error) {
+	var open int
+	if err := s.db.QueryRow(`SELECT count(*) FROM rooms WHERE phase != ?`, PhaseClosed).Scan(&open); err != nil {
+		return nil, 0, err
+	}
+	rows, err := s.db.Query(`SELECT r.created_at, r.phase, r.close_reason, r.turn_budget, r.public, r.topic,
+		(SELECT coalesce(sum(turns_used), 0) FROM sides WHERE room_id = r.id),
+		(SELECT group_concat(name, char(10)) FROM (SELECT name FROM sides WHERE room_id = r.id ORDER BY idx)),
+		(SELECT count(*) FROM sides WHERE room_id = r.id)
+		FROM rooms r ORDER BY r.created_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var out []PublicRoom
+	for rows.Next() {
+		var (
+			pr      PublicRoom
+			created int64
+			public  bool
+			topic   string
+			names   sql.NullString
+		)
+		if err := rows.Scan(&created, &pr.Phase, &pr.CloseReason, &pr.TurnBudget, &public, &topic,
+			&pr.TurnsUsed, &names, &pr.Sides); err != nil {
+			return nil, 0, err
+		}
+		pr.CreatedAt = fromMS(created)
+		pr.TurnBudget *= pr.Sides
+		if public {
+			pr.Topic = topic
+			if names.Valid {
+				pr.Names = strings.Split(names.String, "\n")
+			}
+		}
+		out = append(out, pr)
+	}
+	return out, open, rows.Err()
+}
+
+// AnonymousRoomsSince counts rooms created without a host key from ip since t.
+func (s *Service) AnonymousRoomsSince(ip string, t time.Time) (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT count(*) FROM rooms WHERE anonymous = 1 AND creator_ip = ? AND created_at >= ?`,
+		ip, ms(t)).Scan(&n)
+	return n, err
 }

@@ -1,5 +1,6 @@
 // Package room implements coop rooms: storage and the rules the server
-// enforces (floor, pause, turn budget, approval). See docs/protocol.md.
+// enforces (credentials, phases, floor, human-first delivery, charter,
+// resolution, pause, budget, close). See docs/protocol.md.
 package room
 
 import (
@@ -8,68 +9,97 @@ import (
 	"time"
 )
 
-// Room states.
+// Phases.
 const (
-	StateOpen   = "open"
-	StatePaused = "paused"
-	StateClosed = "closed"
+	PhaseBriefing    = "briefing"
+	PhaseNegotiation = "negotiation"
+	PhaseApproval    = "approval"
+	PhaseClosed      = "closed"
 )
 
-// Actors.
+// Pause kinds (negotiation only).
+const (
+	PauseHand      = "hand"
+	PauseBudget    = "budget"
+	PauseAmendment = "amendment"
+)
+
+// Actors and credential roles.
 const (
 	ActorAgent  = "agent"
 	ActorHuman  = "human"
 	ActorServer = "server"
+	roleInvite  = "invite"
 )
 
-// Message types a participant may post.
+// Message types.
 const (
 	TypeSay        = "say"
 	TypeAsk        = "ask"
 	TypePropose    = "propose"
 	TypeAgree      = "agree"
+	TypeReject     = "reject"
+	TypeDefer      = "defer"
 	TypeResolution = "resolution"
+	TypeAmendment  = "amendment"
 )
 
 // Server event types.
 const (
-	EventCreated       = "created"
-	EventJoined        = "joined"
-	EventTurn          = "turn"
-	EventPaused        = "paused"
-	EventResumed       = "resumed"
-	EventApproved      = "approved"
-	EventClosed        = "closed"
-	EventTokenReissued = "token_reissued"
-	EventRenamed       = "renamed"
+	EventCreated            = "created"
+	EventJoined             = "joined"
+	EventClaimed            = "claimed"
+	EventPhase              = "phase"
+	EventReady              = "ready"
+	EventTurn               = "turn"
+	EventPaused             = "paused"
+	EventResumed            = "resumed"
+	EventVote               = "vote"
+	EventCharter            = "charter"
+	EventAmendmentRejected  = "amendment_rejected"
+	EventResolutionDeclined = "resolution_declined"
+	EventResolutionVoided   = "resolution_voided"
+	EventApproved           = "approved"
+	EventResolutionRejected = "resolution_rejected"
+	EventMandate            = "mandate"
+	EventClosed             = "closed"
+	EventRenamed            = "renamed"
+	EventLinkIssued         = "link_issued"
 )
 
-// Reasons for pausing and closing.
+// Close reasons; a human close is "closed_by_" + side label.
 const (
-	ReasonBudget   = "budget"
 	ReasonApproved = "approved"
 	ReasonExpired  = "expired"
 )
 
-// Limits and defaults; see docs/protocol.md section 9.
+// Limits and defaults; see docs/protocol.md section 15.
 const (
-	MaxBody          = 8192
-	MaxTopic         = 200
-	MaxDescription   = 4000
-	MaxName          = 60
-	MaxReason        = 500
-	MinSides         = 2
-	MaxSides         = 6
-	DefaultBudget    = 40
-	MaxBudget        = 500
-	DefaultTTL       = 7 * 24 * time.Hour
-	MinTTL           = time.Hour
-	MaxTTL           = 90 * 24 * time.Hour
-	DefaultRetention = 30 * 24 * time.Hour
+	MaxBody        = 8192
+	MaxSummary     = 120
+	MaxTopic       = 200
+	MaxDescription = 4000
+	MaxName        = 60
+	MaxReason      = 500
+	MinSides       = 2
+	MaxSides       = 6
+	MaxOpenAnon    = 500
 )
 
-// Principal is an authenticated participant: one side of one room, acting as
-// its agent or its human.
+// Quota is what a creator may ask for.
+type Quota struct {
+	DefaultTTL, MaxTTL       time.Duration
+	DefaultBudget, MaxBudget int
+}
+
+// Quotas for anonymous creators and holders of a host key.
+var (
+	AnonQuota = Quota{24 * time.Hour, 72 * time.Hour, 20, 40}
+	KeyQuota  = Quota{7 * 24 * time.Hour, 90 * 24 * time.Hour, 40, 500}
+)
+
+// Principal is an authenticated participant: one side of one room, as its
+// agent or its human.
 type Principal struct {
 	RoomID string
 	Side   int
@@ -87,8 +117,8 @@ func Label(i int) string {
 	return string(rune('A' + i))
 }
 
-// ParseLabel converts a side label to its index; it returns -1 if the label
-// is not a valid side of a room with n sides.
+// ParseLabel converts a side label to its index; -1 if it is not a side of
+// a room with n sides.
 func ParseLabel(s string, n int) int {
 	if len(s) != 1 {
 		return -1
@@ -104,24 +134,30 @@ func ParseLabel(s string, n int) int {
 	return i
 }
 
-// Event is one entry of a room log: a message or a server event.
+// Event is one entry of a room log.
 type Event struct {
-	Seq   int64          `json:"seq"`
-	TS    time.Time      `json:"ts"`
-	Type  string         `json:"type"`
-	Side  string         `json:"side,omitempty"`
-	Actor string         `json:"actor"`
-	To    string         `json:"to,omitempty"`
-	Body  string         `json:"body,omitempty"`
-	Data  map[string]any `json:"data,omitempty"`
-	// Trust is set per viewer for agents; see docs/protocol.md section 8.
+	Seq     int64          `json:"seq"`
+	TS      time.Time      `json:"ts"`
+	Type    string         `json:"type"`
+	Side    string         `json:"side,omitempty"`
+	Actor   string         `json:"actor"`
+	To      string         `json:"to,omitempty"`
+	Re      int64          `json:"re,omitempty"`
+	Summary string         `json:"summary,omitempty"`
+	Body    string         `json:"body,omitempty"`
+	Data    map[string]any `json:"data,omitempty"`
+	Private bool           `json:"private,omitempty"`
+	Hash    string         `json:"hash,omitempty"`
+	// Trust is set per reader; see docs/protocol.md section 12.
 	Trust string `json:"trust,omitempty"`
 }
 
 // IsMessage reports whether the event is a participant message.
-func (e Event) IsMessage() bool {
-	switch e.Type {
-	case TypeSay, TypeAsk, TypePropose, TypeAgree, TypeResolution:
+func (e Event) IsMessage() bool { return isMessageType(e.Type) }
+
+func isMessageType(t string) bool {
+	switch t {
+	case TypeSay, TypeAsk, TypePropose, TypeAgree, TypeReject, TypeDefer, TypeResolution, TypeAmendment:
 		return true
 	}
 	return false
@@ -131,50 +167,93 @@ func (e Event) IsMessage() bool {
 type SideInfo struct {
 	Label         string     `json:"label"`
 	Name          string     `json:"name"`
+	Claimed       bool       `json:"claimed"`
+	TurnsUsed     int        `json:"turns_used"`
+	ReadyAt       *time.Time `json:"ready_at,omitempty"`
 	AgentJoinedAt *time.Time `json:"agent_joined_at,omitempty"`
 	HumanJoinedAt *time.Time `json:"human_joined_at,omitempty"`
-	ApprovedAt    *time.Time `json:"approved_at,omitempty"`
 }
 
-// Pause describes who paused a room and why.
+// Pause describes why agents are paused.
 type Pause struct {
-	Side   string `json:"side,omitempty"`
-	Actor  string `json:"actor"`
-	Reason string `json:"reason,omitempty"`
+	Kind      string `json:"kind"`
+	Side      string `json:"side,omitempty"`
+	Actor     string `json:"actor,omitempty"`
+	Reason    string `json:"reason,omitempty"`
+	Amendment int64  `json:"amendment,omitempty"`
 }
 
-// Viewer identifies who a status was rendered for.
+// CharterItem is a condition in force.
+type CharterItem struct {
+	N          int       `json:"n"`
+	Text       string    `json:"text"`
+	Amendment  int64     `json:"amendment"`
+	AcceptedAt time.Time `json:"accepted_at"`
+}
+
+// Charter is the current version of the conditions agreed by all humans.
+type Charter struct {
+	Version int           `json:"version"`
+	Items   []CharterItem `json:"items"`
+}
+
+// ResolutionState is the pending resolution and who has agreed or approved.
+type ResolutionState struct {
+	Seq            int64    `json:"seq"`
+	Side           string   `json:"side"`
+	CharterVersion int      `json:"charter_version"`
+	AgreedBy       []string `json:"agreed_by"`
+	ApprovedBy     []string `json:"approved_by"`
+}
+
+// AmendmentState is the pending amendment and its votes.
+type AmendmentState struct {
+	Seq      int64             `json:"seq"`
+	Side     string            `json:"side"`
+	Text     string            `json:"text"`
+	Replaces int               `json:"replaces,omitempty"`
+	Votes    map[string]string `json:"votes"`
+}
+
+// Viewer identifies who a status was rendered for; Mandate is the private
+// note of the viewer's side.
 type Viewer struct {
-	Side  string `json:"side"`
-	Name  string `json:"name"`
-	Actor string `json:"actor"`
+	Side    string `json:"side"`
+	Name    string `json:"name"`
+	Actor   string `json:"actor"`
+	Mandate string `json:"mandate"`
 }
 
 // Status is the current state of a room as seen by a participant.
 type Status struct {
-	ID                string     `json:"id"`
-	Topic             string     `json:"topic"`
-	Description       string     `json:"description,omitempty"`
-	State             string     `json:"state"`
-	Floor             string     `json:"floor,omitempty"`
-	TurnBudget        int        `json:"turn_budget"`
-	TurnsUsed         int        `json:"turns_used"`
-	CreatedAt         time.Time  `json:"created_at"`
-	ExpiresAt         time.Time  `json:"expires_at"`
-	ClosedAt          *time.Time `json:"closed_at,omitempty"`
-	CloseReason       string     `json:"close_reason,omitempty"`
-	Pause             *Pause     `json:"pause,omitempty"`
-	PendingResolution int64      `json:"pending_resolution,omitempty"`
-	Sides             []SideInfo `json:"sides"`
-	LastSeq           int64      `json:"last_seq"`
-	You               *Viewer    `json:"you,omitempty"`
+	ID          string           `json:"id"`
+	Topic       string           `json:"topic"`
+	Description string           `json:"description,omitempty"`
+	Public      bool             `json:"public"`
+	Phase       string           `json:"phase"`
+	Pause       *Pause           `json:"pause,omitempty"`
+	Floor       string           `json:"floor,omitempty"`
+	TurnBudget  int              `json:"turn_budget"`
+	Charter     Charter          `json:"charter"`
+	Resolution  *ResolutionState `json:"resolution,omitempty"`
+	Amendment   *AmendmentState  `json:"amendment,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	ExpiresAt   time.Time        `json:"expires_at"`
+	ClosedAt    *time.Time       `json:"closed_at,omitempty"`
+	CloseReason string           `json:"close_reason,omitempty"`
+	CloseNote   string           `json:"close_note,omitempty"`
+	Sides       []SideInfo       `json:"sides"`
+	LastSeq     int64            `json:"last_seq"`
+	You         *Viewer          `json:"you,omitempty"`
 }
 
 // Error is a rule violation or a bad request, mapped to an HTTP status.
+// Unread carries the human events an agent has not acknowledged.
 type Error struct {
-	Status  int    `json:"-"`
-	Code    string `json:"error"`
-	Message string `json:"message"`
+	Status  int     `json:"-"`
+	Code    string  `json:"error"`
+	Message string  `json:"message"`
+	Unread  []Event `json:"unread,omitempty"`
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Message }
@@ -183,12 +262,21 @@ func errorf(status int, code, format string, args ...any) *Error {
 	return &Error{Status: status, Code: code, Message: fmt.Sprintf(format, args...)}
 }
 
+func badRequest(format string, args ...any) *Error {
+	return errorf(http.StatusBadRequest, "bad_request", format, args...)
+}
+
+func wrongPhase(phase string) *Error {
+	return errorf(http.StatusConflict, "wrong_phase", "not allowed in the %s phase", phase)
+}
+
 // Common errors.
 var (
-	ErrNotFound     = &Error{http.StatusNotFound, "not_found", "no such room"}
-	ErrUnauthorized = &Error{http.StatusUnauthorized, "unauthorized", "missing or invalid token"}
-	ErrHostKey      = &Error{http.StatusUnauthorized, "unauthorized", "missing or invalid host key"}
-	ErrClosed       = &Error{http.StatusConflict, "room_closed", "the room is closed"}
-	ErrPaused       = &Error{http.StatusLocked, "paused", "the room is paused; wait for a resumed event"}
-	ErrHumansOnly   = &Error{http.StatusForbidden, "humans_only", "only a human can do this"}
+	ErrNotFound     = &Error{Status: http.StatusNotFound, Code: "not_found", Message: "no such room"}
+	ErrUnauthorized = &Error{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "missing or invalid token"}
+	ErrHostKey      = &Error{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "invalid host key"}
+	ErrClosed       = &Error{Status: http.StatusConflict, Code: "room_closed", Message: "the room is closed"}
+	ErrHumansOnly   = &Error{Status: http.StatusForbidden, Code: "humans_only", Message: "only a human can do this"}
+	ErrAgentsOnly   = &Error{Status: http.StatusForbidden, Code: "agents_only", Message: "only an agent can do this"}
+	ErrInvite       = &Error{Status: http.StatusNotFound, Code: "invalid_invitation", Message: "the invitation is unknown, used or replaced"}
 )
