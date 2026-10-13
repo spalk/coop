@@ -34,6 +34,8 @@
 
   async function call(method, path, body) {
     const opts = { method, headers: {}, credentials: "same-origin" };
+    // The server accepts cookie-authenticated writes only as JSON (CSRF defence).
+    if (body === undefined && method !== "GET") body = {};
     if (body !== undefined) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(body);
@@ -179,32 +181,93 @@
   }
 
   let mandateDirty = false;
-  const invites = {}; // side label -> invitation URL issued in this page
+  // Links issued in this page. Tokens are stored hashed, so a link can only be
+  // shown right after it is issued.
+  const issued = { agent: null, sides: {} };
+  let linksKey = "";
 
   function renderSide() {
     if (!mandateDirty && document.activeElement !== $("mandate")) $("mandate").value = room.you.mandate || "";
-    const box = $("invites");
+    renderLinks();
+  }
+
+  function linkRow(id, role, label, url) {
+    const row = el("div", "linkrow");
+    const head = el("div", "row");
+    const copy = el("button", "", "Copy");
+    copy.type = "button";
+    copy.dataset.copy = id;
+    head.append(el("span", "tag", role), el("span", "", label), copy);
+    const code = el("code", "", url);
+    code.id = id;
+    row.append(head, code);
+    return row;
+  }
+
+  // linkButton returns the button with its own error line: the page-wide error
+  // sits under the composer, out of sight of this panel.
+  function linkButton(text, reissue, fn) {
+    const wrap = el("div", "stack");
+    const b = el("button", reissue ? "" : "primary", text);
+    b.type = "button";
+    const err = el("div", "error");
+    err.setAttribute("role", "alert");
+    b.addEventListener("click", async () => {
+      if (reissue && !window.confirm("The previous link will stop working. Continue?")) return;
+      try {
+        await fn();
+        linksKey = "";
+        renderLinks();
+      } catch (e) {
+        err.textContent = e.message;
+      }
+    });
+    wrap.append(b, err);
+    return wrap;
+  }
+
+  function renderLinks() {
+    const box = $("links");
+    const closed = room.phase === "closed";
+    const key = JSON.stringify([closed, room.sides.map((s) => [s.name, !!s.human_joined_at, !!s.agent_joined_at]), issued]);
+    if (key === linksKey) return;
+    linksKey = key;
     box.replaceChildren();
     for (const s of room.sides) {
-      if (s.claimed || room.phase === "closed") continue;
-      const row = el("div", "copybox");
-      if (invites[s.label]) {
-        const code = el("code", "", invites[s.label]);
-        code.id = "invite-" + s.label;
-        const copy = el("button", "", "Copy");
-        copy.type = "button";
-        copy.dataset.copy = code.id;
-        row.append(el("span", "muted", "Invitation for " + sideName(s.label)), copy, code);
+      const own = s.label === room.you.side;
+      const name = s.name || "Side " + s.label;
+      const card = el("section", "linkcard side-" + s.label);
+      card.append(el("h3", "", "Side " + s.label + " · " + name + (own ? " (you)" : "")));
+      if (own) {
+        if (box.dataset.mylink) {
+          card.append(linkRow("link-me", "human", "For you, on your other devices", box.dataset.mylink));
+        }
+        if (issued.agent) {
+          card.append(linkRow("link-my-agent", "agent", "For your agent", issued.agent));
+        }
+        if (!closed) {
+          card.append(linkButton(issued.agent ? "Reissue agent link" : "Create link for your agent", !!issued.agent, async () => {
+            issued.agent = (await call("POST", "/agent-link")).agent_url;
+          }));
+        }
+      } else {
+        const entered = s.human_joined_at || s.agent_joined_at;
+        const pair = issued.sides[s.label];
+        if (pair) {
+          card.append(el("p", "muted", "Send both links to " + name + "."));
+          card.append(linkRow("link-" + s.label + "-human", "human", "For " + name, pair.human));
+          card.append(linkRow("link-" + s.label + "-agent", "agent", "For the agent of " + name, pair.agent));
+        }
+        if (entered) {
+          card.append(el("p", "muted", "Entered the room. Their links are theirs to manage."));
+        } else if (!closed) {
+          card.append(linkButton(pair ? "Reissue links" : "Create links for " + name, !!pair, async () => {
+            const res = await call("POST", "/sides/" + s.label + "/links");
+            issued.sides[s.label] = { human: res.human_url, agent: res.agent_url };
+          }));
+        }
       }
-      const btn = el("button", "", "New invitation for " + sideName(s.label));
-      btn.type = "button";
-      btn.addEventListener("click", guard(async () => {
-        const res = await call("POST", "/sides/" + s.label + "/invitation");
-        invites[s.label] = res.url;
-        renderSide();
-      }));
-      row.append(btn);
-      box.append(row);
+      box.append(card);
     }
   }
 
@@ -418,12 +481,6 @@
       await call("PUT", "/mandate", { text: $("mandate").value });
       mandateDirty = false;
       $("mandate-state").textContent = "saved";
-    }));
-
-    $("agent-link").addEventListener("click", guard(async () => {
-      const res = await call("POST", "/agent-link");
-      $("handoff").textContent = res.handoff;
-      $("handoff-box").hidden = false;
     }));
 
     $("export-md").href = api + "/minutes.md?download=1";

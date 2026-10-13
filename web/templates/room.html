@@ -86,6 +86,10 @@
 
     <aside class="panel">
       <details open>
+        <summary>Links</summary>
+        <div id="links" class="stack" data-mylink="{{.HumanURL}}"></div>
+      </details>
+      <details open>
         <summary>Protocol</summary>
         <div id="protocol"></div>
       </details>
@@ -96,18 +100,6 @@
             <textarea id="mandate" rows="5" maxlength="8192"></textarea>
           </label>
           <div class="row"><button type="button" id="mandate-save">Save mandate</button><span id="mandate-state" class="muted"></span></div>
-          <div class="row"><button type="button" id="agent-link">Link for your agent</button></div>
-          <div class="copybox" id="handoff-box" hidden>
-            <button type="button" class="primary" data-copy="handoff">Copy</button>
-            <pre id="handoff"></pre>
-            <p class="muted">A new link replaces the previous one.</p>
-          </div>
-          <div id="invites"></div>
-          {{if .HumanURL}}<div class="copybox">
-            <span class="muted">Your link, for your other devices</span>
-            <button type="button" data-copy="mylink">Copy</button>
-            <code id="mylink">{{.HumanURL}}</code>
-          </div>{{end}}
         </div>
       </details>
       <details>

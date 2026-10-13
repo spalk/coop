@@ -119,6 +119,7 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/rooms/{id}/name", s.withRoom(s.rename))
 	m.HandleFunc("POST /api/rooms/{id}/agent-link", s.withRoom(s.issueAgentLink))
 	m.HandleFunc("POST /api/rooms/{id}/sides/{side}/invitation", s.withRoom(s.issueInvitation))
+	m.HandleFunc("POST /api/rooms/{id}/sides/{side}/links", s.withRoom(s.issueSideLinks))
 	m.HandleFunc("GET /api/rooms/{id}/minutes.md", s.withRoom(s.minutesMD))
 	m.HandleFunc("GET /api/rooms/{id}/minutes.json", s.withRoom(s.minutesJSON))
 	m.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {

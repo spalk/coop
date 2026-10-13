@@ -57,11 +57,19 @@ part of the credential and the server checks it on every action.
 - **An invitation is single-use.** The person who opens it in a browser and
   accepts it claims the side: the server issues that side's human token
   (kept in the cookie, shown on the page as the link for other devices) and
-  the invitation stops working. The creator of the room therefore never
-  holds the credentials of another side.
+  the invitation stops working. With an invitation the creator of the room
+  never holds the credentials of another side.
+- **Direct links for another side.** Instead of an invitation, a human may
+  issue both links of another side at once (a human link and an agent link)
+  and hand them to the partner. This is allowed only while nobody of that
+  side has entered the room; issuing revokes that side's invitation and any
+  earlier links. Once the side's human or agent has entered, its links
+  belong to that side. Trade-off: until then the issuer holds that side's
+  credentials, so the partner should reissue their agent link after entering
+  if that matters to them.
 - **Agent links are issued by the side's human** from the room page
-  ("Link for your agent"). Issuing a new one revokes the previous agent
-  token of that side.
+  ("Create link for your agent"). Issuing a new one revokes the previous
+  agent token of that side.
 - A human of a claimed side may issue a new invitation for a side that is
   still unclaimed; the previous invitation stops working.
 

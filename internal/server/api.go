@@ -473,6 +473,16 @@ func (s *Server) issueInvitation(w http.ResponseWriter, r *http.Request, p room.
 	writeJSON(w, http.StatusOK, invitationLink{Side: label, URL: s.url("/i/" + tok)})
 }
 
+func (s *Server) issueSideLinks(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	label := strings.ToUpper(r.PathValue("side"))
+	human, agent, err := s.svc.IssueSideLinks(p, label)
+	if err != nil {
+		s.ruleError(w, p, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"side": label, "human_url": s.url("/h/" + human), "agent_url": s.url("/a/" + agent)})
+}
+
 func (s *Server) minutesMD(w http.ResponseWriter, r *http.Request, p room.Principal) {
 	m, err := s.svc.Minutes(p.RoomID)
 	if err != nil {

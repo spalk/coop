@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Room page: "Link for your agent" and "New invitation" did nothing: body-less
+  writes were sent without JSON and refused (415). All writes now send JSON.
+
+### Added
+
+- Links panel on the room page: one card per side in the side's colour, each
+  link labelled with who it is for (human / agent) and a Copy button; errors
+  are shown next to the button.
+- `POST /api/rooms/{id}/sides/{label}/links`: both links of another side at
+  once, while nobody of that side has entered the room.
+
 ### Changed (protocol v2, incompatible with v1; v1 rooms are dropped on upgrade)
 
 - Separate human and agent credentials per side (`cooph_`, `coopa_`);

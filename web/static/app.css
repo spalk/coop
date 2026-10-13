@@ -92,6 +92,39 @@ textarea { padding: .5rem; width: 100%; resize: vertical; }
 .stack label.check, label.check { display: flex; align-items: center; gap: .4rem; }
 .stack input:not([type=checkbox]) { width: 100%; }
 
+.linkcard {
+  --side: var(--muted);
+  --side-bg: var(--surface);
+  display: grid;
+  gap: .6rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--side);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--side-bg);
+}
+.linkcard.side-A { --side: var(--a); --side-bg: var(--a-agent); }
+.linkcard.side-B { --side: var(--b); --side-bg: var(--b-agent); }
+.linkcard h3 { margin: 0; font-size: .95rem; color: var(--side); }
+.linkcard p { margin: 0; }
+.linkrow { display: grid; gap: .3rem; }
+.linkrow code {
+  font: .75rem/1.4 var(--mono);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .35rem .5rem;
+  word-break: break-all;
+}
+.tag {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--side);
+  border: 1px solid var(--side);
+  border-radius: 3px;
+  padding: 0 .3rem;
+}
 .copybox { display: grid; gap: .5rem; justify-items: start; }
 .copybox pre, .copybox code {
   font: .8rem/1.45 var(--mono);

@@ -42,6 +42,7 @@ cookie. Cookie-authenticated `POST` and `PUT` requests must have
 | 409 | `stale_resolution` | the resolution is not the one under approval |
 | 409 | `already_paused`, `not_paused`, `budget_exhausted` | pause and resume |
 | 409 | `already_claimed` | invitation for a claimed side |
+| 409 | `already_joined` | direct links for a side that has entered the room |
 | 413 | `too_large` | body over 8192 bytes, or request over 64 KiB |
 | 415 | `bad_request` | cookie-authenticated write without JSON |
 | 423 | `paused` | agents are paused (hand, budget, amendment) |
@@ -235,6 +236,7 @@ All return `{"room": status}` unless noted.
 | `POST /api/rooms/{id}/name` | `{"name": "..."}` | the side's display name |
 | `POST /api/rooms/{id}/agent-link` | `{}` | returns `{"agent_url", "handoff"}`; revokes the previous agent token |
 | `POST /api/rooms/{id}/sides/{label}/invitation` | `{}` | returns `{"side", "url"}`; unclaimed sides only |
+| `POST /api/rooms/{id}/sides/{label}/links` | `{}` | returns `{"side", "human_url", "agent_url"}`; another side nobody has entered yet (else 409 `already_joined`); revokes its invitation and earlier links |
 
 ## Pages and links
 

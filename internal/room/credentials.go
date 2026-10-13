@@ -322,6 +322,53 @@ func (s *Service) IssueInvitation(p Principal, label string) (string, error) {
 	return tok, err
 }
 
+// IssueSideLinks issues a human link and an agent link for another side that
+// nobody has entered yet, so the creator can hand both to the partner at once.
+// Earlier links and the invitation of that side stop working; once the
+// side's human or agent has entered, its links belong to that side.
+func (s *Service) IssueSideLinks(p Principal, label string) (human, agent string, err error) {
+	if p.Actor != ActorHuman {
+		return "", "", ErrHumansOnly
+	}
+	human, agent = newToken(PrefixHuman), newToken(PrefixAgent)
+	err = s.mutate(p.RoomID, func(tx *sql.Tx, r *roomRow, now int64) error {
+		if r.Phase == PhaseClosed {
+			return ErrClosed
+		}
+		side := ParseLabel(label, len(r.Sides))
+		if side < 0 {
+			return badRequest("no side %q in this room", label)
+		}
+		if side == p.Side {
+			return badRequest("use the agent link for your own side")
+		}
+		sd := r.Sides[side]
+		if sd.HumanJoinedAt.Valid || sd.AgentJoinedAt.Valid {
+			return errorf(http.StatusConflict, "already_joined", "side %s has already entered the room", Label(side))
+		}
+		if _, err := tx.Exec(`DELETE FROM credentials WHERE room_id = ? AND side = ? AND role = ?`, r.ID, side, roleInvite); err != nil {
+			return err
+		}
+		if err := replaceCredential(tx, human, r.ID, side, ActorHuman, now); err != nil {
+			return err
+		}
+		if err := replaceCredential(tx, agent, r.ID, side, ActorAgent, now); err != nil {
+			return err
+		}
+		if !sd.ClaimedAt.Valid {
+			if _, err := tx.Exec(`UPDATE sides SET claimed_at = ? WHERE room_id = ? AND idx = ?`, now, r.ID, side); err != nil {
+				return err
+			}
+			r.Sides[side].ClaimedAt = sql.NullInt64{Int64: now, Valid: true}
+		}
+		ev := serverEvent(EventLinkIssued, map[string]any{"role": "pair"})
+		ev.Side = side
+		_, err := appendEvent(tx, r, now, ev)
+		return err
+	})
+	return human, agent, err
+}
+
 func joinKey(p Principal) string { return p.RoomID + "/" + p.Label() + "/" + p.Actor }
 
 // MarkJoined records the first appearance of a participant.

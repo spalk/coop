@@ -381,3 +381,59 @@ func TestStaticAndLLMs(t *testing.T) {
 		t.Fatal("llms.txt does not use the base URL")
 	}
 }
+
+// The creator hands the partner both links at once; they work until the
+// partner enters, and the invitation stops working.
+func TestSideLinks(t *testing.T) {
+	e := newEnv(t, "")
+	code, out := e.do(nil, "POST", "/api/rooms", "", map[string]any{
+		"topic": "Links", "sides": []map[string]string{{"name": "Dmitry"}, {"name": "Vasya"}},
+	})
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %v", code, out)
+	}
+	id := field(out, "room", "id").(string)
+	invite := out["invitations"].([]any)[0].(map[string]any)["url"].(string)
+	humanA := browser()
+	if res, err := humanA.Post(out["human_url"].(string), "", nil); err != nil || res.StatusCode != 200 {
+		t.Fatalf("human A enter: %v", err)
+	}
+	links := "/api/rooms/" + id + "/sides/B/links"
+
+	// Without a JSON body the cookie write is refused (the bug room.js had).
+	if code, _ := e.do(humanA, "POST", links, "", nil); code != http.StatusUnsupportedMediaType {
+		t.Fatalf("no body: want 415, got %d", code)
+	}
+	if code, _ := e.do(nil, "POST", links, out["agent_token"].(string), map[string]any{}); code != http.StatusForbidden {
+		t.Fatalf("agent issuing side links: want 403, got %d", code)
+	}
+	if code, _ := e.do(humanA, "POST", "/api/rooms/"+id+"/sides/A/links", "", map[string]any{}); code != http.StatusBadRequest {
+		t.Fatalf("own side: want 400, got %d", code)
+	}
+	code, first := e.do(humanA, "POST", links, "", map[string]any{})
+	if code != 200 {
+		t.Fatalf("links: %d %v", code, first)
+	}
+	code, second := e.do(humanA, "POST", links, "", map[string]any{})
+	if code != 200 {
+		t.Fatalf("reissue: %d %v", code, second)
+	}
+	tok := func(u any) string { s := u.(string); return s[strings.LastIndex(s, "/")+1:] }
+	if code, _ := e.do(nil, "GET", "/api/rooms/"+id, tok(first["agent_url"]), nil); code != http.StatusUnauthorized {
+		t.Fatalf("old agent link: want 401, got %d", code)
+	}
+	if res, _ := browser().Post(invite, "", nil); res.StatusCode == 200 {
+		t.Fatal("invitation still works after side links were issued")
+	}
+	code, st := e.do(nil, "GET", "/api/rooms/"+id, tok(second["agent_url"]), nil)
+	if code != 200 || field(st, "room", "you", "side") != "B" || field(st, "room", "you", "actor") != "agent" {
+		t.Fatalf("agent B: %d %v", code, st)
+	}
+	humanB := browser()
+	if res, err := humanB.Post(second["human_url"].(string), "", nil); err != nil || res.StatusCode != 200 {
+		t.Fatalf("human B enter: %v", err)
+	}
+	if code, _ := e.do(humanA, "POST", links, "", map[string]any{}); code != http.StatusConflict {
+		t.Fatalf("after B entered: want 409, got %d", code)
+	}
+}
