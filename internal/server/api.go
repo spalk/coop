@@ -77,6 +77,24 @@ func (s *Server) status(w http.ResponseWriter, p room.Principal) (room.Status, b
 	return st, true
 }
 
+// presence gives, per side, whether its human and its agent are active now.
+// Whether they have ever joined is in the room status (*_joined_at).
+func (s *Server) presence(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	st, ok := s.status(w, p)
+	if !ok {
+		return
+	}
+	out := map[string]map[string]bool{}
+	for _, sd := range st.Sides {
+		out[sd.Label] = map[string]bool{}
+		for _, role := range []string{room.ActorHuman, room.ActorAgent} {
+			key := p.RoomID + "/" + sd.Label + "/" + role
+			out[sd.Label][role] = s.streams.active(key)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"active": out})
+}
+
 func (s *Server) getRoom(w http.ResponseWriter, r *http.Request, p room.Principal) {
 	if st, ok := s.status(w, p); ok {
 		writeJSON(w, http.StatusOK, map[string]any{"room": st})
@@ -245,7 +263,7 @@ func (s *Server) ruleError(w http.ResponseWriter, p room.Principal, err error) {
 }
 
 func (s *Server) stream(w http.ResponseWriter, p room.Principal) (func(), bool) {
-	key := p.RoomID + "/" + p.Label() + "/" + p.Actor
+	key := streamKey(p)
 	if !s.streams.acquire(key) {
 		writeError(w, &room.Error{Status: http.StatusTooManyRequests, Code: "too_many_waits",
 			Message: fmt.Sprintf("at most %d open wait or event streams per side and role", maxStreams)})

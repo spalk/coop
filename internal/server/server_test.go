@@ -517,3 +517,23 @@ func TestRenameOtherSide(t *testing.T) {
 		t.Fatalf("rename entered side: want 409, got %d", code)
 	}
 }
+
+// Presence: a side and role that made a request recently is active.
+func TestPresence(t *testing.T) {
+	e := newEnv(t, "")
+	code, out := e.do(nil, "POST", "/api/rooms", "", map[string]any{
+		"topic": "Here", "sides": []map[string]string{{"name": "Dmitry"}, {"name": "Vasya"}},
+	})
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %v", code, out)
+	}
+	id, agentA := field(out, "room", "id").(string), out["agent_token"].(string)
+	code, p := e.do(nil, "GET", "/api/rooms/"+id+"/presence", agentA, nil)
+	if code != 200 {
+		t.Fatalf("presence: %d %v", code, p)
+	}
+	if field(p, "active", "A", "agent") != true || field(p, "active", "A", "human") != false ||
+		field(p, "active", "B", "agent") != false {
+		t.Fatalf("presence: %v", p)
+	}
+}

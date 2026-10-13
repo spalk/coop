@@ -65,7 +65,7 @@ func New(svc *room.Service, baseURL string) (*Server, error) {
 		pages:    pages,
 		mux:      http.NewServeMux(),
 		limiter:  newLimiter(),
-		streams:  &streams{n: map[string]int{}},
+		streams:  &streams{n: map[string]int{}, seen: map[string]time.Time{}},
 		Version:  "dev",
 	}
 	s.routes()
@@ -111,6 +111,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/rooms/{id}/wait", s.withRoom(s.wait))
 	m.HandleFunc("GET /api/rooms/{id}/events", s.withRoom(s.sse))
 	m.HandleFunc("GET /api/rooms/{id}/protocol", s.withRoom(s.protocol))
+	m.HandleFunc("GET /api/rooms/{id}/presence", s.withRoom(s.presence))
 	m.HandleFunc("POST /api/rooms/{id}/raise", s.withRoom(s.raise))
 	m.HandleFunc("POST /api/rooms/{id}/resume", s.withRoom(s.resume))
 	m.HandleFunc("POST /api/rooms/{id}/ready", s.withRoom(s.ready))
@@ -201,6 +202,7 @@ func (s *Server) withRoom(h roomHandler) http.HandlerFunc {
 				Message: "Content-Type must be application/json"})
 			return
 		}
+		s.streams.touch(streamKey(p))
 		h(w, r, p)
 	}
 }
@@ -301,11 +303,19 @@ func (l *limiter) allow(key string, perMinute int, now time.Time) (bool, time.Du
 	return true, 0
 }
 
-// streams counts open wait/SSE connections per side and role.
+// activeWindow is how long a participant counts as active after its last
+// request: an agent thinking between two waits is still in the room.
+const activeWindow = 2 * time.Minute
+
+// streams counts open wait/SSE connections per side and role, and when each
+// side and role was last seen, for the presence lights.
 type streams struct {
-	mu sync.Mutex
-	n  map[string]int
+	mu   sync.Mutex
+	n    map[string]int
+	seen map[string]time.Time
 }
+
+func streamKey(p room.Principal) string { return p.RoomID + "/" + p.Label() + "/" + p.Actor }
 
 func (s *streams) acquire(key string) bool {
 	s.mu.Lock()
@@ -314,6 +324,7 @@ func (s *streams) acquire(key string) bool {
 		return false
 	}
 	s.n[key]++
+	s.seen[key] = time.Now()
 	return true
 }
 
@@ -323,4 +334,18 @@ func (s *streams) release(key string) {
 	if s.n[key]--; s.n[key] <= 0 {
 		delete(s.n, key)
 	}
+	s.seen[key] = time.Now()
+}
+
+func (s *streams) touch(key string) {
+	s.mu.Lock()
+	s.seen[key] = time.Now()
+	s.mu.Unlock()
+}
+
+// active reports whether key has an open stream or was seen recently.
+func (s *streams) active(key string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.n[key] > 0 || time.Since(s.seen[key]) < activeWindow
 }

@@ -92,6 +92,11 @@ textarea { padding: .5rem; width: 100%; resize: vertical; }
 .stack label.check, label.check { display: flex; align-items: center; gap: .4rem; }
 .stack input:not([type=checkbox]) { width: 100%; }
 
+.presence-row { display: flex; align-items: center; gap: .45rem; }
+.light { width: .7rem; height: .7rem; border-radius: 50%; flex: none; border: 1px solid var(--muted); background: transparent; }
+.light.joined { background: #d9a400; border-color: #d9a400; }
+.light.active { background: #2e9e4f; border-color: #2e9e4f; }
+
 .linkcard {
   --side: var(--muted);
   --side-bg: var(--surface);

@@ -232,6 +232,7 @@ All return `{"room": status}` unless noted.
 | `POST /api/rooms/{id}/amendments/{seq}/vote` | `{"accept": true, "comment": "..."}` | vote on the pending amendment |
 | `POST /api/rooms/{id}/approve` | `{"resolution": 30}` | approval phase |
 | `POST /api/rooms/{id}/reject` | `{"resolution": 30, "comment": "..."}` | comment required |
+| `GET /api/rooms/{id}/presence` | — | `{"active": {"A": {"human": true, "agent": false}, ...}}`: open stream or a request in the last 2 minutes |
 | `POST /api/rooms/{id}/finish` | `{"close": true}` or `{"close": false, "request": "..."}` | decided phase: choose to close (closes when every side has), or continue with a new request for the agents |
 | `POST /api/rooms/{id}/publish` | `{}` | closed rooms: agree to publish; public at `/p/{id}` when every side agrees |
 | `POST /api/rooms/{id}/unpublish` | `{}` | withdraw the agreement; takes a published room down |

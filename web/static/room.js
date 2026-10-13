@@ -242,6 +242,7 @@
   function renderSide() {
     if (!mandateDirty && document.activeElement !== $("mandate")) $("mandate").value = room.you.mandate || "";
     renderLinks();
+    renderPresence();
   }
 
   function linkRow(id, role, label, url) {
@@ -279,6 +280,43 @@
     });
     wrap.append(b, err);
     return wrap;
+  }
+
+  // Presence lights: grey not joined yet, yellow joined but quiet, green
+  // active now (page open, waiting for events, or a request in the last
+  // two minutes).
+  let active = {};
+  let presenceTimer = 0;
+
+  async function loadPresence() {
+    const res = await fetch(api + "/presence", { credentials: "same-origin" });
+    if (res.ok) active = (await res.json()).active || {};
+    renderPresence();
+  }
+
+  function schedulePresence() {
+    clearTimeout(presenceTimer);
+    presenceTimer = setTimeout(() => loadPresence().catch(() => {}).finally(schedulePresence), 15000);
+  }
+
+  function renderPresence() {
+    const box = $("presence");
+    box.replaceChildren();
+    for (const s of room.sides) {
+      const card = el("section", "linkcard side-" + s.label);
+      card.append(el("h3", "", "Side " + s.label + " · " + (s.name || "Side " + s.label) + (s.label === room.you.side ? " (you)" : "")));
+      for (const [role, label, joined] of [["human", "Person", s.human_joined_at], ["agent", "Agent", s.agent_joined_at]]) {
+        const on = active[s.label] && active[s.label][role];
+        const state = on ? "active" : joined ? "joined" : "";
+        const text = on ? "here now" : joined ? "joined, not active now" : "not joined yet";
+        const row = el("div", "presence-row");
+        const light = el("span", "light " + state);
+        light.title = label + ": " + text;
+        row.append(light, el("span", "", label), el("span", "muted", text));
+        card.append(row);
+      }
+      box.append(card);
+    }
   }
 
   function renderLinks() {
@@ -440,8 +478,13 @@
     if (p.room.close_reason) head.append(el("div", "", "Closed: " + p.room.close_reason + (p.room.close_note ? ". " + p.room.close_note : "")));
     box.append(head);
 
-    box.append(el("h3", "", "Charter v" + p.room.charter.version));
-    if (!p.room.charter.items.length) box.append(el("p", "muted", "No conditions yet."));
+    const ch = el("h3", "", "Charter v" + p.room.charter.version);
+    ch.title = "Conditions agreed by the people of every side. They bind both agents.";
+    box.append(ch);
+    if (!p.room.charter.items.length) {
+      box.append(el("p", "muted", "No agreed conditions yet. A person proposes one by sending a message of type Amendment; " +
+        "when the people of every side accept it, it appears here and binds both agents."));
+    }
     else {
       const ol = el("ol", "charter-list");
       for (const it of p.room.charter.items) {
@@ -596,6 +639,7 @@
     update(data.room);
     bind();
     connect();
+    loadPresence().catch(() => {}).finally(schedulePresence);
   }
 
   start().catch((err) => {

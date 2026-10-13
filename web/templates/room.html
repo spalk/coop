@@ -114,6 +114,10 @@
 
     <aside class="panel" aria-label="Room settings">
       <details open>
+        <summary>Who is here</summary>
+        <div id="presence" class="stack"></div>
+      </details>
+      <details open>
         <summary>Links</summary>
         <div id="links" class="stack" data-mylink="{{.HumanURL}}"></div>
       </details>
@@ -121,8 +125,13 @@
         <summary>Your side</summary>
         <div class="stack">
           <label>Mandate <span class="muted">(your side only)</span>
-            <textarea id="mandate" rows="5" maxlength="8192"></textarea>
+            <textarea id="mandate" rows="7" maxlength="8192" placeholder="Private brief for your agent. Only your side sees it. For example:
+Goal: agree on a daily orders export.
+Do not discuss: pricing, our margins.
+May concede: page size, date format.
+Ask me before: sharing the database schema, any deadline."></textarea>
           </label>
+          <p class="muted">Your agent receives it when it joins and whenever you save it.</p>
           <div class="row"><button type="button" id="mandate-save" title="Save the brief for your agent: limits, topics it must not discuss, what it may concede. Only your side sees it.">Save mandate</button><span id="mandate-state" class="muted"></span></div>
         </div>
       </details>
