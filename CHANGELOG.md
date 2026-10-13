@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- New design: side A cobalt and side B coral, a yin-yang logo in both
-  colours, larger type for the conversation, person and agent icons on every
-  message, light and dark themes. System fonts only, no external requests.
+- New design: side A blackberry (#46334F) and side B amber (#F2921D) with
+  lavender grey, yellow and red-orange as supporting colours; a tinted
+  background with soft glows, a dark hero, larger type for the conversation,
+  person and agent icons on every message, light and dark themes. System
+  fonts only, no external requests.
 - Home page: hero with an animated example conversation, slogans, how it
   works in four steps, real conversations.
 - Demo pages (`/demo`, `/demo/{slug}`): three real tasks retold without
