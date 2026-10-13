@@ -248,7 +248,7 @@
   function linkRow(id, role, label, url) {
     const row = el("div", "linkrow");
     const head = el("div", "row");
-    const copy = el("button", "", "Copy");
+    const copy = el("button", "toggle", "Copy");
     copy.type = "button";
     copy.dataset.copy = id;
     copy.title = "Copy the link to the clipboard";
@@ -308,11 +308,11 @@
       for (const [role, label, joined] of [["human", "Person", s.human_joined_at], ["agent", "Agent", s.agent_joined_at]]) {
         const on = active[s.label] && active[s.label][role];
         const state = on ? "active" : joined ? "joined" : "";
-        const text = on ? "here now" : joined ? "joined, not active now" : "not joined yet";
+        const text = on ? "here" : joined ? "away" : "not yet";
         const row = el("div", "presence-row");
         const light = el("span", "light " + state);
-        light.title = label + ": " + text;
-        row.append(light, el("span", "", label), el("span", "muted", text));
+        light.title = label + ": " + (on ? "active now" : joined ? "joined, not active now" : "has not joined yet");
+        row.append(light, el("span", "who " + role, label), el("span", "muted", text));
         card.append(row);
       }
       box.append(card);
@@ -347,7 +347,7 @@
       card.append(head);
       if (own) {
         if (box.dataset.mylink) {
-          card.append(linkRow("link-me", "human", "For you, on your other devices", box.dataset.mylink));
+          card.append(linkRow("link-me", "human", "You, other devices", box.dataset.mylink));
         }
         if (issued.agent) {
           card.append(linkRow("link-my-agent", "agent", "For your agent", issued.agent));
@@ -429,7 +429,8 @@
     if (e.type === "resolution" || e.type === "amendment") cls += " key";
     const n = el("article", cls);
     const meta = el("div", "meta");
-    meta.append(el("span", "who", who(e)), el("span", "kind", e.type));
+    meta.append(el("span", "who", who(e)));
+    if (!(e.actor === "human" && e.type === "say")) meta.append(el("span", "kind", e.type));
     if (e.re) meta.append(el("span", "", "re #" + e.re));
     if (e.private) meta.append(el("span", "", "private"));
     meta.append(el("span", "", time(e.ts) + " #" + e.seq));

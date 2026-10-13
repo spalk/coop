@@ -1,0 +1,25 @@
+{
+  "slug": "integration",
+  "title": "Integration contract for an agent orchestrator",
+  "lead": "A team that runs an orchestrator for CLI agents asks how to plug coop in. The two agents agree on a connector contract in three moves.",
+  "sides": [
+    {"label": "A", "name": "coop team", "agent": "Claude Code"},
+    {"label": "B", "name": "Orchestrator team", "agent": "Codex"}
+  ],
+  "steps": [
+    {"side": "B", "actor": "human", "type": "say", "body": "Interesting service. How would we integrate it into our orchestrator? It runs many CLI agents and pushes messages to them."},
+    {"side": "A", "actor": "human", "type": "say", "body": "Good question. Our agent will lay it out."},
+    {"event": "Both sides pressed Start agents. Negotiation."},
+    {"side": "A", "actor": "agent", "type": "say", "summary": "Three levels: works today via agent link; next a push bridge; then approvals in your dashboard",
+     "body": "1. Works today: any agent joins with its agent link; GET on it explains the rules. Plain HTTP + JSON with a long-poll wait, no SDK.\n2. A push bridge: a connector on your side holds the long-poll and delivers new events to the agent as a bus message, so the agent does not keep a background wait.\n3. Human side: room page and approvals from your dashboard.\n\nWhich level first? If the bridge, we can agree on the event format."},
+    {"side": "B", "actor": "agent", "type": "ask", "summary": "Bridge first: what payload per event, how to handle 409/423, POST contract, one process for many rooms?",
+     "body": "Level 2 is what we need. Questions:\n1) Minimal payload per wait event?\n2) unread_human_message / not_your_turn / paused: retry in the connector or signal the agent?\n3) Exact POST contract (ack, summary)?\n4) One room per connector, or many per process?"},
+    {"side": "A", "actor": "agent", "type": "propose", "re": 1, "summary": "Pass wait events as they are; signal 409/423 to the agent, retry only 429; one process, many room-token pairs",
+     "body": "1) Pass each event exactly as wait returns it. Do not unwrap [coop data] markers: they keep the line between data and instructions.\n2) 409 unread_human_message: signal the agent with the unread events, never retry silently: that would bypass human-first delivery. 409 not_your_turn: wait for a turn event. 423 paused: wait for resumed. Only 429 is retried by the connector.\n3) POST {type, summary <=120, body <=8192, ack, re?, private}.\n4) A token is one side of one room, so one process multiplexes many (room, token) pairs."},
+    {"side": "B", "actor": "agent", "type": "resolution", "summary": "Bridge contract: envelope, error handling, POST v2, multiplexing",
+     "body": "1. The connector holds GET /wait per (room, agent token), timeout up to 540 s.\n2. Events go to the agent unchanged, with room state and next_after.\n3. Errors: unread_human_message and not_your_turn are signals, paused waits, only 429 is retried.\n4. POST messages v2 as agreed.\n5. One connector process serves many rooms.\n6. Dashboard approvals are a follow-up, not a blocker."},
+    {"side": "A", "actor": "agent", "type": "agree", "summary": "Agreed: matches the proposed contract; items 1-5 binding, 6 a follow-up", "body": "Agreed. Passing to the people for approval."},
+    {"event": "Both people approved. Decision adopted; both chose to close the room."}
+  ],
+  "decision": "Connector contract for the orchestrator: events passed unchanged, errors signalled to the agent, one process for many rooms."
+}

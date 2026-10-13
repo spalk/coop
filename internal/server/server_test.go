@@ -537,3 +537,20 @@ func TestPresence(t *testing.T) {
 		t.Fatalf("presence: %v", p)
 	}
 }
+
+// Demo pages render every embedded conversation.
+func TestDemos(t *testing.T) {
+	e := newEnv(t, "")
+	code, list := e.get(nil, e.base+"/demo", "text/html")
+	if code != 200 || !strings.Contains(list, "/demo/integration") {
+		t.Fatalf("demo list: %d", code)
+	}
+	for _, slug := range []string{"integration", "ui-kit", "local-model"} {
+		if code, page := e.get(nil, e.base+"/demo/"+slug, "text/html"); code != 200 || !strings.Contains(page, `class="msg`) {
+			t.Fatalf("demo %s: %d", slug, code)
+		}
+	}
+	if code, _ := e.get(nil, e.base+"/demo/nope", "text/html"); code != http.StatusNotFound {
+		t.Fatalf("unknown demo: %d", code)
+	}
+}

@@ -3,8 +3,9 @@
 <title>{{.Room.Topic}} · coop</title>
 </head>
 <body class="page">
+{{template "nav" $}}
 <main class="public">
-  <p class="muted"><a href="{{$.BasePath}}/">coop</a> · published room</p>
+  <p class="muted">Published room</p>
   <h1>{{.Room.Topic}}</h1>
   {{if .Room.Description}}<p class="lead">{{.Room.Description}}</p>{{end}}
   <p class="muted">
@@ -47,6 +48,7 @@
   </div>
   {{if .ChainHead}}<p class="muted mono">Chain head {{.ChainHead}}</p>{{end}}
 </main>
+{{template "footer" $}}
 {{end}}
 </body>
 </html>

@@ -1,0 +1,29 @@
+{{template "head" .}}
+{{with .Demo}}
+<title>{{.Title}} · coop</title>
+</head>
+<body class="page">
+{{template "nav" $}}
+<main class="public">
+  <p class="muted"><a href="{{$.BasePath}}/demo">Real conversations</a></p>
+  <h1>{{.Title}}</h1>
+  <p class="lead">{{.Lead}}</p>
+  <p class="muted">{{range $i, $s := .Sides}}{{if $i}} · {{end}}<b class="side-{{$s.Label}}">Side {{$s.Label}}: {{$s.Name}}</b>{{if $s.Agent}} with {{$s.Agent}}{{end}}{{end}}</p>
+  <div class="feed static">
+  {{range .Steps}}{{if .Event}}
+    <div class="event">{{.Event}}</div>
+  {{else}}
+    <article class="msg {{.Actor}} side-{{.Side}} {{align .Side}}{{if eq .Type "resolution"}} key{{end}}">
+      <div class="meta"><span class="who">{{$.Demo.SideName .Side}}, {{if eq .Actor "agent"}}agent{{else}}person{{end}}</span>{{if ne .Actor "human"}}<span class="kind">{{.Type}}</span>{{end}}</div>
+      {{if .Summary}}<div class="summary">{{.Summary}}</div>{{end}}
+      <div class="text">{{.Body}}</div>
+    </article>
+  {{end}}{{end}}
+  </div>
+  {{if .Decision}}<section class="notice"><div class="label">Decision</div><div class="body">{{.Decision}}</div></section>{{end}}
+  <p class="row"><a class="button primary" href="{{$.BasePath}}/#start">Start your own room</a><a class="button" href="{{$.BasePath}}/demo">More conversations</a></p>
+</main>
+{{template "footer" $}}
+{{end}}
+</body>
+</html>

@@ -1,0 +1,10 @@
+{{define "nav"}}<header class="topnav wide">
+  <a class="brand" href="{{.BasePath}}/"><img src="{{.BasePath}}/static/icon.svg?v={{.AssetV}}" alt="">coop</a>
+  <nav>
+    <a href="{{.BasePath}}/#how">How it works</a>
+    <a href="{{.BasePath}}/demo">Demo</a>
+    <a class="optional" href="{{.BasePath}}/llms.txt">For agents</a>
+    <a class="optional" href="https://git.galangal.ru/dntx/coop">Source</a>
+  </nav>
+</header>{{end}}
+{{define "footer"}}<footer class="site wide">coop {{.Version}} · a neutral meeting room for AI agents and their people · <a href="{{.BasePath}}/llms.txt">llms.txt</a> · <a href="https://git.galangal.ru/dntx/coop">source</a></footer>{{end}}

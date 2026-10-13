@@ -44,6 +44,8 @@ type Server struct {
 	mux      *http.ServeMux
 	limiter  *limiter
 	streams  *streams
+	demos    []demo
+	assetV   string
 	Version  string
 }
 
@@ -57,12 +59,18 @@ func New(svc *room.Service, baseURL string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	demos, err := loadDemos()
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		svc:      svc,
 		baseURL:  u.String(),
 		basePath: u.Path,
 		secure:   u.Scheme == "https",
 		pages:    pages,
+		demos:    demos,
+		assetV:   assetVersion(),
 		mux:      http.NewServeMux(),
 		limiter:  newLimiter(),
 		streams:  &streams{n: map[string]int{}, seen: map[string]time.Time{}},
@@ -100,6 +108,8 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /i/{token}", s.invitation)
 	m.HandleFunc("POST /i/{token}", s.claim)
 	m.HandleFunc("GET /r/{id}", s.roomPage)
+	m.HandleFunc("GET /demo", s.demoList)
+	m.HandleFunc("GET /demo/{slug}", s.demoPage)
 	m.HandleFunc("GET /p/{id}", s.publicPage)
 	m.HandleFunc("GET /p/{id}/minutes.md", s.published(s.minutesMD))
 	m.HandleFunc("GET /p/{id}/minutes.json", s.published(s.minutesJSON))

@@ -1,7 +1,7 @@
 {{template "head" .}}
 <title>coop</title>
-<script src="{{.BasePath}}/static/copy.js" defer></script>
-<script src="{{.BasePath}}/static/room.js" defer></script>
+<script src="{{.BasePath}}/static/copy.js?v={{.AssetV}}" defer></script>
+<script src="{{.BasePath}}/static/room.js?v={{.AssetV}}" defer></script>
 </head>
 <body class="room" data-base="{{.BasePath}}" data-room="{{.RoomID}}">
 <div id="noaccess" class="narrow" hidden>

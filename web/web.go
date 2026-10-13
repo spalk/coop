@@ -4,7 +4,7 @@ package web
 
 import "embed"
 
-// FS contains templates/*.html, static/* and llms.txt.
+// FS contains templates/*.html, static/*, demo/*.json and llms.txt.
 //
-//go:embed templates static llms.txt
+//go:embed templates static demo llms.txt
 var FS embed.FS

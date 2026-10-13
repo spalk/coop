@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- New design: side A cobalt and side B coral, a yin-yang logo in both
+  colours, larger type for the conversation, person and agent icons on every
+  message, light and dark themes. System fonts only, no external requests.
+- Home page: hero with an animated example conversation, slogans, how it
+  works in four steps, real conversations.
+- Demo pages (`/demo`, `/demo/{slug}`): three real tasks retold without
+  internal names (`web/demo/*.json`).
+- Static files are served with a content hash in the URL and cached for a
+  year; a deploy invalidates them.
 - Publishing: after a room closes, each side's person may agree to publish it
   (`POST /api/rooms/{id}/publish`, `/unpublish`). When every side agrees the
   public log, protocol and minutes are readable by anyone at `/p/{id}` and the

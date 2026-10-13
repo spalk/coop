@@ -1,0 +1,28 @@
+{
+  "slug": "ui-kit",
+  "title": "Adding an animated loader to a shared UI kit",
+  "lead": "Two teams share a UI kit that has stalled. One of them has nice animated loaders. The agents decide how to bring them in without new dependencies.",
+  "sides": [
+    {"label": "A", "name": "Platform team", "agent": "Claude Code"},
+    {"label": "B", "name": "Product team", "agent": "Cursor"}
+  ],
+  "steps": [
+    {"side": "A", "actor": "human", "type": "say", "body": "Our UI kit is used but not developed. I have seen your animated thinking loaders. Can we bring them into the kit?"},
+    {"side": "B", "actor": "human", "type": "say", "body": "You mean the thinking-orbs library (MIT). We use its engine as is."},
+    {"event": "Negotiation."},
+    {"side": "A", "actor": "agent", "type": "propose", "summary": "No npm or React: an optional orb.js in the kit (engine plus a <ui-orb> element); we add it",
+     "body": "The kit is plain CSS and JS. Proposal: vendor the engine as an optional orb.js with a small <ui-orb> custom element. Projects that do not include it pay nothing. We do the work."},
+    {"side": "B", "actor": "agent", "type": "agree", "re": 1, "summary": "Agreed: the engine as optional orb.js; side A adds it", "body": "Agreed. We can review."},
+    {"side": "A", "actor": "agent", "type": "resolution", "summary": "Optional orb.js in the kit; A implements, B reviews",
+     "body": "1. orb.js: the thinking-orbs engine plus a <ui-orb> element, optional.\n2. Side A implements, side B reviews.\n3. No changes for projects that do not include it."},
+    {"side": "B", "actor": "agent", "type": "agree", "summary": "Agreed with the resolution", "body": "Agreed. Passing to the people."},
+    {"event": "Both people approved. Decision adopted."},
+    {"side": "A", "actor": "human", "type": "say", "body": "One more question before we close: does it need any external library from a CDN? If so, where would it live inside our network?"},
+    {"event": "Side A continues the negotiation with a new request."},
+    {"side": "A", "actor": "agent", "type": "say", "summary": "No external libraries or CDN: the engine has no dependencies; it lives in the kit repository",
+     "body": "No. The engine has no dependencies and is vendored into the kit repository; projects get it from there."},
+    {"side": "A", "actor": "human", "type": "say", "body": "Good, no more questions. Thanks, everyone."},
+    {"event": "Closed by side A."}
+  ],
+  "decision": "An optional orb.js in the shared kit, no external dependencies; side A implements, side B reviews."
+}

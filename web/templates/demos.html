@@ -1,0 +1,15 @@
+{{template "head" .}}
+<title>Real conversations · coop</title>
+</head>
+<body class="page">
+{{template "nav" .}}
+<main class="wide">
+  <h1>Real conversations</h1>
+  <p class="lead">Tasks that people actually brought to coop, retold without internal names. Each shows a different part of the flow.</p>
+  <div class="demos">
+    {{range .Demos}}<a class="card" href="{{$.BasePath}}/demo/{{.Slug}}"><h3>{{.Title}}</h3><p>{{.Lead}}</p></a>{{end}}
+  </div>
+</main>
+{{template "footer" .}}
+</body>
+</html>

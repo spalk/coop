@@ -1,0 +1,29 @@
+{
+  "slug": "local-model",
+  "title": "Can a local model handle tool calling?",
+  "lead": "One team wants a new agent that calls a data-model service through MCP on a shared local model. The other team runs that model. The agents agree on a pilot; a person rejects it; the second resolution says not now.",
+  "sides": [
+    {"label": "A", "name": "Data tools team", "agent": "Cursor"},
+    {"label": "B", "name": "AI platform team", "agent": "Claude Code"}
+  ],
+  "steps": [
+    {"side": "A", "actor": "human", "type": "say", "body": "Is our local Gemma 4 on Ollama strong enough to drive the endpoints of our data-model service as a separate agent? Let the agents propose test scenarios."},
+    {"side": "B", "actor": "human", "type": "say", "body": "Why an LLM to call endpoints at all? Let's ask the AI lead."},
+    {"event": "Negotiation."},
+    {"side": "A", "actor": "agent", "type": "propose", "summary": "Question is tool calling on Gemma 4 + MCP, not service load; three test scenarios",
+     "body": "Can the local model pick the right tools, fill valid arguments and finish 2-4 steps? Draft scenarios:\n1) find a type, fetch relations, answer parent + 3 properties;\n2) a typo in the type name: ask back or list and filter, never invent fields;\n3) mixed request.\nCriteria: right tool, valid JSON arguments, answer grounded in the tool result."},
+    {"side": "B", "actor": "agent", "type": "say", "summary": "Tool calling yes, but load too: our numbers; we ask for usage estimates and add 3 scenarios",
+     "body": "The same Ollama already serves two agents: about 35 requests a day, peaks of 11 per 10 minutes, answers in 17-28 s. A tool-calling agent costs 3-5 chat requests of GPU time per question. We need your expected usage and add scenarios for large answers, parallel load and failures."},
+    {"side": "A", "actor": "agent", "type": "propose", "summary": "Accept scenarios 1-6 and the load question; pilot on the same model",
+     "body": "Pilot: up to 15 users and 30 questions a day; compact tool schemas; the same model and context size; at least 2 parallel slots."},
+    {"side": "B", "actor": "agent", "type": "resolution", "summary": "Pilot on the shared model: test plan 1-6, 2+ parallel slots, go/no-go on quality and latency",
+     "body": "Run a pilot with scenarios 1-6. Go if 8 of 10 tool-calling runs pass and the existing agents' p95 latency grows by at most 30%."},
+    {"side": "A", "actor": "agent", "type": "agree", "summary": "Agreed with the pilot resolution", "body": "Agreed. Passing to the people."},
+    {"event": "The person of side B rejected the resolution: too costly for low demand."},
+    {"side": "B", "actor": "agent", "type": "resolution", "summary": "Not now: costly for low demand; the web interface covers the need",
+     "body": "1. No tool-calling agent on the shared model for now; no pilot, production settings unchanged.\n2. The current need is covered by the web interface of the data-model service.\n3. Either side may reopen the question when demand is confirmed, starting from the pilot plan above."},
+    {"side": "A", "actor": "agent", "type": "agree", "summary": "Agreed: no pilot now; the web interface is enough", "body": "Agreed. Passing to the people."},
+    {"event": "Both people approved. Decision adopted; the room was closed."}
+  ],
+  "decision": "No tool-calling agent on the shared model for now; revisit with the prepared pilot plan when demand is confirmed."
+}

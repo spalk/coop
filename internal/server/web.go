@@ -50,6 +50,7 @@ var funcs = template.FuncMap{
 }
 
 type pageData struct {
+	AssetV   string // changes when any static file changes: cache busting
 	BasePath string
 	BaseURL  string
 	Version  string
@@ -62,12 +63,14 @@ type pageData struct {
 	HumanURL string
 	Rooms    []room.PublicRoom
 	Minutes  *room.Minutes
+	Demos    []demo
+	Demo     *demo
 	Open     int
 	Error    string
 }
 
 func (s *Server) page(w http.ResponseWriter, status int, name string, d pageData) {
-	d.BasePath, d.BaseURL, d.Version = s.basePath, s.baseURL, s.Version
+	d.BasePath, d.BaseURL, d.Version, d.AssetV = s.basePath, s.baseURL, s.Version, s.assetV
 	var buf bytes.Buffer
 	if err := s.pages.ExecuteTemplate(&buf, name, d); err != nil {
 		writeError(w, err)
@@ -101,7 +104,7 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	s.page(w, http.StatusOK, "home.html", pageData{Rooms: rooms, Open: open})
+	s.page(w, http.StatusOK, "home.html", pageData{Rooms: rooms, Open: open, Demos: s.demos})
 }
 
 // publicPage shows a published room read-only: its public log and record.
@@ -142,7 +145,7 @@ func (s *Server) createForm(w http.ResponseWriter, r *http.Request) {
 		var e *room.Error
 		if errors.As(err, &e) {
 			rooms, open, _ := s.svc.PublicRooms(30)
-			s.page(w, e.Status, "home.html", pageData{Rooms: rooms, Open: open, Error: e.Message})
+			s.page(w, e.Status, "home.html", pageData{Rooms: rooms, Open: open, Error: e.Message, Demos: s.demos})
 			return
 		}
 		writeError(w, err)
@@ -168,7 +171,12 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) {
 	if ct := mime.TypeByExtension(path.Ext(name)); ct != "" {
 		w.Header().Set("Content-Type", ct)
 	}
-	w.Header().Set("Cache-Control", "max-age=300")
+	if r.URL.Query().Get("v") == s.assetV {
+		// Versioned URL: its content never changes.
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "max-age=300")
+	}
 	w.Write(b)
 }
 
