@@ -10,7 +10,7 @@ import (
 	"path"
 	"sort"
 
-	"github.com/dntx/coop/web"
+	"github.com/spalk/coop/web"
 )
 
 // demo is a recorded conversation shown on the demo pages: real tasks,

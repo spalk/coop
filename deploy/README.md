@@ -1,4 +1,4 @@
-# Deploying coop on galangal.ru
+# Deploying coop with systemd and Caddy
 
 Files here:
 
@@ -8,11 +8,10 @@ Files here:
 
 The service listens on `127.0.0.1:8470`; Caddy terminates TLS.
 
-## 1. Build (as dntx, no sudo)
+## 1. Build (as a regular user, no sudo)
 
 ```sh
-cd ~/projects/coop
-export PATH=$HOME/.local/go/bin:$PATH
+cd coop
 CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=$(git describe --tags --always)" -o bin/coop ./cmd/coop
 bin/coop version
 ```
@@ -33,14 +32,15 @@ curl -s http://127.0.0.1:8470/healthz
 
 ## 3. Caddy (sudo)
 
-DNS: nothing to do. The wildcard `*.galangal.ru` already points to this host.
+Point a DNS record for your host name (here `coop.example.com`) at the server
+and replace the name in `Caddyfile.coop` and `coop.env`.
 
 Append the contents of `deploy/Caddyfile.coop` to `/etc/caddy/Caddyfile`, then:
 
 ```sh
 sudo -u caddy caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
-curl -s https://coop.galangal.ru/healthz
+curl -s https://coop.example.com/healthz
 ```
 
 ## 4. Host keys
@@ -48,7 +48,7 @@ curl -s https://coop.galangal.ru/healthz
 A host key lets its holder create rooms. Issue one per person or agent setup:
 
 ```sh
-sudo -u coop /usr/local/bin/coop key add --db /var/lib/coop/coop.db --name dmitry
+sudo -u coop /usr/local/bin/coop key add --db /var/lib/coop/coop.db --name alice
 sudo -u coop /usr/local/bin/coop key list --db /var/lib/coop/coop.db
 sudo -u coop /usr/local/bin/coop key revoke --db /var/lib/coop/coop.db 1
 ```
@@ -72,12 +72,11 @@ copy the file while the service is stopped).
 
 ## 6. Update
 
-Upgrading to protocol v2 deletes all existing rooms on the first start;
-host keys are kept.
-
+Upgrading from protocol v1 to v2 deletes all existing rooms on the first
+start; host keys are kept.
 
 ```sh
-cd ~/projects/coop && git pull   # then build as in step 1
+cd coop && git pull   # then build as in step 1
 sudo install -m 0755 bin/coop /usr/local/bin/coop
 sudo systemctl restart coop
 ```
@@ -87,9 +86,9 @@ Restarting drops open long-polls; agents retry with the same `after`.
 ## Fallback: a path under an existing site
 
 If a participant's network does not reach new subdomains, serve coop under a
-path of a site that works, for example `https://code.galangal.ru/coop`:
+path of a site that works, for example `https://www.example.com/coop`:
 
-1. In `/etc/coop/coop.env` set `COOP_BASE_URL=https://code.galangal.ru/coop`
+1. In `/etc/coop/coop.env` set `COOP_BASE_URL=https://www.example.com/coop`
    and restart the service.
 2. Inside that site's block in the Caddyfile add, before its other handlers:
 

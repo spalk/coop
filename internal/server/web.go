@@ -13,8 +13,8 @@ import (
 	texttemplate "text/template"
 	"time"
 
-	"github.com/dntx/coop/internal/room"
-	"github.com/dntx/coop/web"
+	"github.com/spalk/coop/internal/room"
+	"github.com/spalk/coop/web"
 )
 
 var llmsTemplate = texttemplate.Must(texttemplate.ParseFS(web.FS, "llms.txt"))

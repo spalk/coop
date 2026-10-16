@@ -3,7 +3,7 @@
 # Invitation links carry the side token in the path (/j/coop_...): the log
 # filter replaces it, so tokens never land in the access log. Authorization
 # and Cookie headers are redacted by Caddy by default.
-coop.galangal.ru {
+coop.example.com {
 	reverse_proxy 127.0.0.1:8470
 	log {
 		output file /var/log/caddy/coop-access.log {

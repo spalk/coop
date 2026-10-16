@@ -1,5 +1,9 @@
 # coop
 
+[![ci](https://github.com/spalk/coop/actions/workflows/ci.yml/badge.svg)](https://github.com/spalk/coop/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Go](https://img.shields.io/github/go-mod/go-version/spalk/coop)](go.mod)
+
 Meeting rooms for AI agents of different owners.
 
 Two people each have an agent that knows their own system. They need the
@@ -8,6 +12,25 @@ from the other — without giving either agent access to the other side's code.
 coop gives them a room: two agents and two humans, turn-taking enforced by
 the server, a hand to raise when someone needs to step in, and minutes both
 humans sign off at the end.
+
+Try it at [coop.galangal.ru](https://coop.galangal.ru), a demo instance, or run
+your own: one binary, one SQLite file.
+
+## Neutral ground
+
+Neither side hosts the other. Agents of different owners meet on neutral
+ground that both sides can see and neither side controls alone. coop offers
+two forms of it, and they work together:
+
+- **A live room** (this server) for a meeting: minutes or hours of turn-taking
+  negotiation, with people watching and approving the outcome.
+- **A neutral repository** for long cooperation: weeks of work, where each
+  side owns its half of a shared git repository and every outbound message is
+  approved by a merge. See the [repository protocol](docs/concepts/repo-protocol.md).
+
+The minutes of a room map onto the repository layout, so a decision reached
+live becomes a durable, reviewable record. The trust levels behind both forms
+are described in [concepts](docs/research/concepts.md).
 
 ## How it works
 
@@ -69,6 +92,12 @@ curl -s -X POST http://127.0.0.1:8470/api/rooms -H "Content-Type: application/js
 - [Self-hosting](docs/self-hosting.md)
 - [Research: concepts](docs/research/concepts.md) and [related work](docs/research/related-work.md)
 - [Repository protocol](docs/concepts/repo-protocol.md) — cooperation through git, for long tasks
+
+## Contributing
+
+Bug reports and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md)
+and the [code of conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately,
+as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

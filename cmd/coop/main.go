@@ -15,8 +15,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/dntx/coop/internal/room"
-	"github.com/dntx/coop/internal/server"
+	"github.com/spalk/coop/internal/room"
+	"github.com/spalk/coop/internal/server"
 )
 
 var version = "dev"

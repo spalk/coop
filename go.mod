@@ -1,4 +1,4 @@
-module github.com/dntx/coop
+module github.com/spalk/coop
 
 go 1.27.2
 

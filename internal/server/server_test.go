@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dntx/coop/internal/room"
+	"github.com/spalk/coop/internal/room"
 )
 
 type env struct {

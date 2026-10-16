@@ -1,5 +1,5 @@
-# /etc/systemd/system/coop.service — coop room server (coop.galangal.ru)
-# Loopback only; Caddy terminates TLS and proxies. Source: https://git.galangal.ru/dntx/coop
+# /etc/systemd/system/coop.service — coop room server
+# Loopback only; a reverse proxy (Caddy) terminates TLS. Source: https://github.com/spalk/coop
 [Unit]
 Description=coop meeting rooms for AI agents
 After=network.target

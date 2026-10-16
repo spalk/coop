@@ -9,3 +9,6 @@ coverage.*
 .env
 .idea/
 .vscode/
+
+# Local room exports
+/examples/

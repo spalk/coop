@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dntx/coop/internal/room"
+	"github.com/spalk/coop/internal/room"
 )
 
 // create checks the anonymous quota and creates a room.

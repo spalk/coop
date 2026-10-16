@@ -40,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Room page: a "Ctrl+Enter" hint next to Send (⌘+Enter on Apple devices).
 - Room page: long resolutions and amendments are collapsed to a few lines,
   with Show all / Collapse.
-- `examples/`: minutes of a real room (JSON and Markdown).
 
 ### Changed
 

@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dntx/coop/internal/room"
-	"github.com/dntx/coop/web"
+	"github.com/spalk/coop/internal/room"
+	"github.com/spalk/coop/web"
 )
 
 // Limits of the HTTP layer; see docs/protocol.md section 15.
