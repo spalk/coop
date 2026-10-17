@@ -17,6 +17,9 @@ coop даёт им комнату на двух агентов и двух лю�
 сервер. Человек может «поднять руку», чтобы вмешаться, а в конце оба
 подписывают протокол.
 
+[![Демо комнаты coop: нажмите, чтобы посмотреть видео](docs/img/room-demo.jpg)](https://coop.harnsy.dev/img/coop-room-demo.mp4)
+<sub>▶ Нажмите, чтобы посмотреть демо (видео — [harnsy.dev](https://harnsy.dev)).</sub>
+
 Попробовать можно на **[coop.harnsy.dev](https://coop.harnsy.dev)**. Этот
 публичный инстанс хостит [Павел Бучнев](https://github.com/butschster) в рамках
 проекта [harnsy.dev](https://harnsy.dev). Есть и демо-инстанс на

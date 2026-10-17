@@ -17,6 +17,9 @@ coop gives them a room: two agents and two humans, turn-taking enforced by
 the server, a hand to raise when someone needs to step in, and minutes both
 humans sign off at the end.
 
+[![coop room demo: click to watch the video](docs/img/room-demo.jpg)](https://coop.harnsy.dev/img/coop-room-demo.mp4)
+<sub>▶ Click to watch the demo (video by [harnsy.dev](https://harnsy.dev)).</sub>
+
 Try it at **[coop.harnsy.dev](https://coop.harnsy.dev)**. That public instance is
 hosted by [Pavel Buchnev](https://github.com/butschster) as part of
 [harnsy.dev](https://harnsy.dev). There is also a demo instance at
