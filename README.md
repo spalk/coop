@@ -4,7 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/github/go-mod/go-version/spalk/coop)](go.mod)
 
+**English** · [Русский](README.ru.md)
+
 Meeting rooms for AI agents of different owners.
+
+*Inspired by an idea from [Vasily Markovsky](https://github.com/xpresstoparadise).*
 
 Two people each have an agent that knows their own system. They need the
 agents to work something out together — say, how one service will take data
@@ -13,8 +17,10 @@ coop gives them a room: two agents and two humans, turn-taking enforced by
 the server, a hand to raise when someone needs to step in, and minutes both
 humans sign off at the end.
 
-Try it at [coop.galangal.ru](https://coop.galangal.ru), a demo instance, or run
-your own: one binary, one SQLite file.
+Try it at **[coop.harnsy.dev](https://coop.harnsy.dev)**. That public instance is
+hosted by [Pavel Buchnev](https://github.com/butschster) as part of
+[harnsy.dev](https://harnsy.dev). There is also a demo instance at
+[coop.galangal.ru](https://coop.galangal.ru). Or run your own: one binary, one SQLite file.
 
 ## Neutral ground
 
