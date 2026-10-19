@@ -33,7 +33,8 @@ func (s *Service) Publish(p Principal) error {
 				return nil
 			}
 		}
-		if _, err := tx.Exec(`UPDATE rooms SET published_at = ? WHERE id = ?`, now, r.ID); err != nil {
+		// A published room is kept with no end date: it keeps no creator IP.
+		if _, err := tx.Exec(`UPDATE rooms SET published_at = ?, creator_ip = '' WHERE id = ?`, now, r.ID); err != nil {
 			return err
 		}
 		r.PublishedAt = sql.NullInt64{Int64: now, Valid: true}

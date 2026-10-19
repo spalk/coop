@@ -81,6 +81,13 @@ func envInt(name string, def int) int {
 	return def
 }
 
+func envDuration(name string, def time.Duration) time.Duration {
+	if v, err := time.ParseDuration(os.Getenv(name)); err == nil {
+		return v
+	}
+	return def
+}
+
 func newFlags(name string) (*flag.FlagSet, *string) {
 	fs := flag.NewFlagSet(name, flag.ExitOnError)
 	db := fs.String("db", env("COOP_DB", "coop.db"), "SQLite database path")
@@ -92,6 +99,8 @@ func serve(args []string) error {
 	addr := fs.String("addr", env("COOP_ADDR", "127.0.0.1:8470"), "listen address")
 	baseURL := fs.String("base-url", env("COOP_BASE_URL", ""), "public URL, e.g. https://coop.example.org or https://example.org/coop")
 	retention := fs.Int("retention-days", envInt("COOP_RETENTION_DAYS", 30), "delete closed rooms after this many days (0: keep)")
+	ipRetention := fs.Duration("ip-retention", envDuration("COOP_IP_RETENTION", room.IPWindow),
+		"blank a room's creator IP this long after creation (at least the 1h quota window; publishing blanks it at once)")
 	fs.Parse(args)
 	if *baseURL == "" {
 		*baseURL = "http://" + *addr
@@ -110,7 +119,7 @@ func serve(args []string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go housekeeping(ctx, svc, time.Duration(*retention)*24*time.Hour)
+	go housekeeping(ctx, svc, time.Duration(*retention)*24*time.Hour, *ipRetention)
 
 	hs := &http.Server{
 		Addr:              *addr,
@@ -135,8 +144,9 @@ func serve(args []string) error {
 	return nil
 }
 
-// housekeeping closes expired rooms and purges old closed rooms.
-func housekeeping(ctx context.Context, svc *room.Service, retention time.Duration) {
+// housekeeping closes expired rooms, forgets creator IPs older than
+// ipRetention and purges old closed rooms.
+func housekeeping(ctx context.Context, svc *room.Service, retention, ipRetention time.Duration) {
 	t := time.NewTicker(time.Minute)
 	defer t.Stop()
 	lastPurge := time.Time{}
@@ -145,6 +155,9 @@ func housekeeping(ctx context.Context, svc *room.Service, retention time.Duratio
 			log.Printf("expire: %v", err)
 		} else if n > 0 {
 			log.Printf("closed %d expired rooms", n)
+		}
+		if _, err := svc.ForgetCreatorIPs(ipRetention); err != nil {
+			log.Printf("forget creator IPs: %v", err)
 		}
 		if retention > 0 && time.Since(lastPurge) > time.Hour {
 			lastPurge = time.Now()

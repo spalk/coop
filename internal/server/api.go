@@ -17,7 +17,7 @@ import (
 func (s *Server) create(r *http.Request, hostKey string, req room.CreateRequest) (room.Created, error) {
 	ip := clientIP(r)
 	if hostKey == "" {
-		n, err := s.svc.AnonymousRoomsSince(ip, time.Now().Add(-time.Hour))
+		n, err := s.svc.AnonymousRoomsSince(ip, time.Now().Add(-room.IPWindow))
 		if err != nil {
 			return room.Created{}, err
 		}

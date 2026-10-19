@@ -602,3 +602,60 @@ func TestUpgradeDropsV1Rooms(t *testing.T) {
 		t.Fatalf("host key lost in upgrade: %v", err)
 	}
 }
+
+func (f *fixture) creatorIP() string {
+	f.t.Helper()
+	var ip string
+	if err := f.s.db.QueryRow(`SELECT creator_ip FROM rooms WHERE id = ?`, f.id).Scan(&ip); err != nil {
+		f.t.Fatal(err)
+	}
+	return ip
+}
+
+func TestPublishForgetsCreatorIP(t *testing.T) {
+	f := newFixture(t, CreateRequest{})
+	if err := f.s.CloseRoom(f.humanA, "Done."); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.Publish(f.humanA); err != nil {
+		t.Fatal(err)
+	}
+	if ip := f.creatorIP(); ip != "10.0.0.1" {
+		t.Fatalf("one vote is not publication, ip %q", ip)
+	}
+	if err := f.s.Publish(f.humanB); err != nil {
+		t.Fatal(err)
+	}
+	if ip := f.creatorIP(); ip != "" {
+		t.Fatalf("published room keeps ip %q", ip)
+	}
+}
+
+func TestForgetCreatorIPsAfterWindow(t *testing.T) {
+	f := newFixture(t, CreateRequest{})
+	// 0 and anything below the quota window keep the IP for the window.
+	for _, keep := range []time.Duration{0, time.Minute, IPWindow} {
+		if n, err := f.s.ForgetCreatorIPs(keep); err != nil || n != 0 || f.creatorIP() != "10.0.0.1" {
+			t.Fatalf("keep %v, within the window: %d %v %q", keep, n, err, f.creatorIP())
+		}
+	}
+	if n, err := f.s.AnonymousRoomsSince("10.0.0.1", f.clock.Add(-IPWindow)); err != nil || n != 1 {
+		t.Fatalf("quota counts the room: %d %v", n, err)
+	}
+	f.clock = f.clock.Add(IPWindow + time.Minute)
+	if n, err := f.s.ForgetCreatorIPs(0); err != nil || n != 1 || f.creatorIP() != "" {
+		t.Fatalf("past the window: %d %v %q", n, err, f.creatorIP())
+	}
+}
+
+func TestForgetCreatorIPsLongerRetention(t *testing.T) {
+	f := newFixture(t, CreateRequest{})
+	f.clock = f.clock.Add(2 * time.Hour)
+	if n, err := f.s.ForgetCreatorIPs(24 * time.Hour); err != nil || n != 0 || f.creatorIP() != "10.0.0.1" {
+		t.Fatalf("kept for 24h: %d %v %q", n, err, f.creatorIP())
+	}
+	f.clock = f.clock.Add(23 * time.Hour)
+	if n, err := f.s.ForgetCreatorIPs(24 * time.Hour); err != nil || n != 1 || f.creatorIP() != "" {
+		t.Fatalf("past 24h: %d %v %q", n, err, f.creatorIP())
+	}
+}
