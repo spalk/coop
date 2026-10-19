@@ -220,6 +220,30 @@ func (s *Service) PublicRooms(limit int) ([]PublicRoom, int, error) {
 	return out, open, rows.Err()
 }
 
+// IPWindow is the anonymous quota's window: rooms per IP are counted over it,
+// and nothing else reads a room's creator IP.
+const IPWindow = time.Hour
+
+// ForgetCreatorIPs blanks the creator IP of rooms created more than keep ago.
+// keep below IPWindow (0 included) counts as IPWindow: the quota needs the IP
+// that long. It returns the number of rooms changed.
+func (s *Service) ForgetCreatorIPs(keep time.Duration) (int, error) {
+	if keep < IPWindow {
+		keep = IPWindow
+	}
+	var n int64
+	err := s.write("", func(tx *sql.Tx) error {
+		res, err := tx.Exec(`UPDATE rooms SET creator_ip = '' WHERE creator_ip != '' AND created_at < ?`,
+			ms(s.now().Add(-keep)))
+		if err != nil {
+			return err
+		}
+		n, _ = res.RowsAffected()
+		return nil
+	})
+	return int(n), err
+}
+
 // AnonymousRoomsSince counts rooms created without a host key from ip since t.
 func (s *Service) AnonymousRoomsSince(ip string, t time.Time) (int, error) {
 	var n int

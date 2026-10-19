@@ -65,6 +65,10 @@ journalctl -u coop -f
 ```
 
 Closed rooms are deleted automatically after `COOP_RETENTION_DAYS` (30).
+The IP that created a room is kept only for the anonymous quota (10 rooms per
+IP per hour) and blanked `COOP_IP_RETENTION` after creation (a Go duration:
+`1h`, `24h`; default and minimum `1h`, the quota window; `0` = the minimum).
+Publishing a room blanks it at once.
 Expired rooms are closed within a minute.
 
 Backup: `sqlite3 /var/lib/coop/coop.db ".backup /path/coop-backup.db"` (or

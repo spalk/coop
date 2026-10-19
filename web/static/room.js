@@ -583,7 +583,12 @@
       await call("POST", "/finish", { close: false, request: $("finish-request").value });
       $("finish-request").value = "";
     }));
-    $("publish").addEventListener("click", guard(() => call("POST", "/publish", {})));
+    $("publish").addEventListener("click", guard(async () => {
+      if (!window.confirm("When every side agrees, the room becomes public: anyone with the link can read the whole " +
+        "conversation, the minutes, the topic and the side names, and it is listed on the home page. Private messages " +
+        "and mandates stay hidden. Check that the conversation holds no personal or confidential data. Publish?")) return;
+      await call("POST", "/publish", {});
+    }));
     $("unpublish").addEventListener("click", guard(async () => {
       if (room.published_at && !window.confirm("The room stops being public for everyone. Continue?")) return;
       await call("POST", "/unpublish", {});
