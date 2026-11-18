@@ -554,3 +554,59 @@ func TestDemos(t *testing.T) {
 		t.Fatalf("unknown demo: %d", code)
 	}
 }
+
+// A closed room is deleted when both humans ask; an open event stream ends and
+// every link stops working.
+func TestDelete(t *testing.T) {
+	e := newEnv(t, "")
+	r := e.setup()
+	api := "/api/rooms/" + r.id
+	if code, _ := e.do(r.humanA, "POST", api+"/delete", "", map[string]any{}); code != http.StatusConflict {
+		t.Fatalf("delete while open: want 409, got %d", code)
+	}
+	if code, out := e.do(r.humanA, "POST", api+"/close", "", map[string]any{"reason": "done"}); code != 200 {
+		t.Fatalf("close: %d %v", code, out)
+	}
+	if code, _ := e.do(nil, "POST", api+"/delete", r.agentA, map[string]any{}); code != http.StatusForbidden {
+		t.Fatalf("agent deleting: want 403, got %d", code)
+	}
+	code, out := e.do(r.humanA, "POST", api+"/delete", "", map[string]any{})
+	if code != 200 || field(out, "room", "sides").([]any)[0].(map[string]any)["delete_at"] == nil {
+		t.Fatalf("delete A: %d %v", code, out)
+	}
+	if code, _ := e.do(r.humanA, "POST", api+"/keep", "", map[string]any{}); code != 200 {
+		t.Fatalf("keep A: %d", code)
+	}
+	if code, _ := e.do(r.humanA, "POST", api+"/delete", "", map[string]any{}); code != 200 {
+		t.Fatalf("delete A again: %d", code)
+	}
+	req, _ := http.NewRequest("GET", e.base+api+"/events", nil)
+	res, err := r.humanA.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	ended := make(chan struct{})
+	go func() {
+		io.Copy(io.Discard, res.Body)
+		close(ended)
+	}()
+	time.Sleep(200 * time.Millisecond)
+	code, out = e.do(r.humanB, "POST", api+"/delete", "", map[string]any{})
+	if code != 200 || out["deleted"] != true {
+		t.Fatalf("delete B: %d %v", code, out)
+	}
+	select {
+	case <-ended:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the open event stream of side A did not end with the delete")
+	}
+	for name, tok := range map[string]string{"agent A": r.agentA, "agent B": r.agentB} {
+		if code, _ := e.do(nil, "GET", api, tok, nil); code != http.StatusNotFound && code != http.StatusUnauthorized {
+			t.Fatalf("%s after delete: got %d", name, code)
+		}
+	}
+	if code, _ := e.do(r.humanA, "GET", api, "", nil); code != http.StatusNotFound && code != http.StatusUnauthorized {
+		t.Fatalf("human A after delete: got %d", code)
+	}
+}

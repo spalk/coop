@@ -602,3 +602,167 @@ func TestUpgradeDropsV1Rooms(t *testing.T) {
 		t.Fatalf("host key lost in upgrade: %v", err)
 	}
 }
+
+// A closed room is deleted early only when the human of every side that
+// entered agrees; the last agreement deletes it with everything in it.
+func TestDeleteByAllSides(t *testing.T) {
+	f := newFixture(t, CreateRequest{})
+	if err := f.s.MarkJoined(f.humanA); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.s.Delete(f.humanA)
+	wantCode(t, err, "wrong_phase")
+	if err := f.s.CloseRoom(f.humanA, "Done."); err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.s.Delete(f.agentA)
+	wantCode(t, err, "humans_only")
+	if deleted, err := f.s.Delete(f.humanB); err != nil || deleted {
+		t.Fatalf("first vote: deleted=%v err=%v", deleted, err)
+	}
+	if err := f.s.Keep(f.humanB); err != nil {
+		t.Fatal(err)
+	}
+	if deleted, err := f.s.Delete(f.humanA); err != nil || deleted {
+		t.Fatalf("A's vote: deleted=%v err=%v", deleted, err)
+	}
+	if deleted, err := f.s.Delete(f.humanA); err != nil || deleted {
+		t.Fatalf("repeated vote: deleted=%v err=%v", deleted, err)
+	}
+	st := f.status()
+	if st.Sides[0].DeleteAt == nil || st.Sides[1].DeleteAt != nil {
+		t.Fatalf("votes: %+v", st.Sides)
+	}
+	if err := f.s.Keep(f.humanA); err != nil {
+		t.Fatal(err)
+	}
+	if st := f.status(); st.Sides[0].DeleteAt != nil {
+		t.Fatalf("after keep: %+v", st.Sides)
+	}
+	types := map[string]bool{}
+	evs, err := f.s.Events(f.id, 1, 0, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range evs {
+		types[e.Type] = true
+	}
+	if !types[EventDeleteVote] || !types[EventDeleteWithdrawn] {
+		t.Fatalf("events: %v", types)
+	}
+	if _, err := f.s.Delete(f.humanA); err != nil {
+		t.Fatal(err)
+	}
+	if deleted, err := f.s.Delete(f.humanB); err != nil || !deleted {
+		t.Fatalf("last vote: deleted=%v err=%v", deleted, err)
+	}
+	_, err = f.s.Status(f.id, nil)
+	wantCode(t, err, "not_found")
+	for name, tok := range f.tokens {
+		if _, err := f.s.Authenticate(tok); err == nil {
+			t.Fatalf("%s still works after delete", name)
+		}
+	}
+	var n int
+	if f.s.db.QueryRow(`PRAGMA secure_delete`).Scan(&n); n != 1 {
+		t.Fatalf("secure_delete is %d: deleted text stays in free pages", n)
+	}
+	for _, table := range []string{"sides", "credentials", "events", "marks"} {
+		f.s.db.QueryRow(`SELECT count(*) FROM `+table+` WHERE room_id = ?`, f.id).Scan(&n)
+		if n != 0 {
+			t.Fatalf("%d rows left in %s", n, table)
+		}
+	}
+}
+
+// A side whose human never entered is not asked (an unclaimed invitation, or
+// direct links nobody has opened as a person); a published room must be
+// unpublished first.
+func TestDeleteUnclaimedSideAndPublished(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "coop.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	c, err := s.CreateRoom("", "10.0.0.1", CreateRequest{Topic: "Alone"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	humanA, err := s.Authenticate(c.HumanToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CloseRoom(humanA, "Nobody came."); err != nil {
+		t.Fatal(err)
+	}
+	if deleted, err := s.Delete(humanA); err != nil || !deleted {
+		t.Fatalf("invitation not accepted: deleted=%v err=%v", deleted, err)
+	}
+
+	c, err = s.CreateRoom("", "10.0.0.1", CreateRequest{Topic: "Direct links"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	humanA, _ = s.Authenticate(c.HumanToken)
+	if err := s.MarkJoined(humanA); err != nil {
+		t.Fatal(err)
+	}
+	_, agentB, err := s.IssueSideLinks(humanA, "B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pb, err := s.Authenticate(agentB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkJoined(pb); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CloseRoom(humanA, "Done."); err != nil {
+		t.Fatal(err)
+	}
+	if deleted, err := s.Delete(humanA); err != nil || !deleted {
+		t.Fatalf("B's person never entered: deleted=%v err=%v", deleted, err)
+	}
+
+	f := newFixture(t, CreateRequest{})
+	if err := f.s.CloseRoom(f.humanA, "Done."); err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range []Principal{f.humanA, f.humanB} {
+		if err := f.s.Publish(h); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err = f.s.Delete(f.humanA)
+	wantCode(t, err, "published")
+	if err := f.s.Unpublish(f.humanB); err != nil {
+		t.Fatal(err)
+	}
+	if deleted, err := f.s.Delete(f.humanA); err != nil || deleted {
+		t.Fatalf("after unpublish: deleted=%v err=%v", deleted, err)
+	}
+}
+
+func TestUpgradeFromLayout3KeepsRooms(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "coop.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := s.CreateRoom("", "ip", CreateRequest{Topic: "kept"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.db.Exec(`ALTER TABLE sides DROP COLUMN delete_at`)
+	s.db.Exec(`PRAGMA user_version = 3`)
+	s.Close()
+	s, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if _, err := s.Status(c.Status.ID, nil); err != nil {
+		t.Fatalf("room lost in upgrade: %v", err)
+	}
+}

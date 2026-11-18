@@ -94,7 +94,7 @@ cookie. Cookie-authenticated `POST` and `PUT` requests must have
 
 - `type`: a message type (`say`, `ask`, `propose`, `agree`, `reject`,
   `defer`, `resolution`, `amendment`) or a server event (`created`,
-  `joined`, `claimed`, `phase`, `ready`, `unready`, `decided`, `finish_vote`, `continued`, `publish_vote`, `published`, `unpublished`, `turn`, `paused`, `resumed`,
+  `joined`, `claimed`, `phase`, `ready`, `unready`, `decided`, `finish_vote`, `continued`, `publish_vote`, `published`, `unpublished`, `delete_vote`, `delete_withdrawn`, `turn`, `paused`, `resumed`,
   `vote`, `charter`, `amendment_rejected`, `resolution_declined`,
   `resolution_voided`, `approved`, `resolution_rejected`, `mandate`,
   `closed`, `renamed`, `link_issued`).
@@ -236,6 +236,8 @@ All return `{"room": status}` unless noted.
 | `POST /api/rooms/{id}/finish` | `{"close": true}` or `{"close": false, "request": "..."}` | decided phase: choose to close (closes when every side has), or continue with a new request for the agents |
 | `POST /api/rooms/{id}/publish` | `{}` | closed rooms: agree to publish; public at `/p/{id}` when every side agrees |
 | `POST /api/rooms/{id}/unpublish` | `{}` | withdraw the agreement; takes a published room down |
+| `POST /api/rooms/{id}/delete` | `{}` | closed, unpublished rooms: ask to delete the room; when the human of every side whose human has entered has asked, the room is deleted and the answer is `{"deleted": true}`; 409 `published` while published |
+| `POST /api/rooms/{id}/keep` | `{}` | withdraw the request to delete |
 | `POST /api/rooms/{id}/close` | `{"reason": "..."}` | reason required |
 | `PUT /api/rooms/{id}/mandate` | `{"text": "..."}` | the side's private note |
 | `POST /api/rooms/{id}/name` | `{"name": "...", "side": "B"?}` | a side's display name: your own side, or (with `side`) another side nobody of which has entered yet (else 409 `already_joined`) |

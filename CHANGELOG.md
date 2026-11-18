@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   public log, protocol and minutes are readable by anyone at `/p/{id}` and the
   room is listed on the home page; any side can take it down again.
   Published rooms are not purged. Private events and mandates are never shown.
+- Deleting: after a room closes, each side's person may ask to delete it
+  before the retention period ends ("Delete everything" on the room page,
+  `POST /api/rooms/{id}/delete`, `/keep`, events `delete_vote`,
+  `delete_withdrawn`). When the person of every side whose person has entered
+  has asked, the room is deleted at once with its log, mandates, minutes and links. A
+  published room must be unpublished first.
+- The database deletes with SQLite's `secure_delete` on: deleted rooms are
+  overwritten in the file, not left in free pages.
 - Renaming another side before anyone of it has entered (`side` in
   `POST /api/rooms/{id}/name`); Rename buttons in the links panel.
 - Room page: "Who is here" lights per side, for the person and the agent:
@@ -53,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Threads still open or deferred when a resolution is approved are shown as
   `settled` instead of open questions.
 - Database layout 3 (publishing); upgrading from layout 2 keeps the rooms.
+- Database layout 4 (deleting); upgrading from layout 3 keeps the rooms.
 - Briefing: "Ready to negotiate" is now "Start agents" and can be withdrawn
   (`POST /api/rooms/{id}/unready`, event `unready`) until every side has
   pressed it.

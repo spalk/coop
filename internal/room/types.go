@@ -56,6 +56,8 @@ const (
 	EventPublishVote        = "publish_vote"
 	EventPublished          = "published"
 	EventUnpublished        = "unpublished"
+	EventDeleteVote         = "delete_vote"
+	EventDeleteWithdrawn    = "delete_withdrawn"
 	EventTurn               = "turn"
 	EventPaused             = "paused"
 	EventResumed            = "resumed"
@@ -181,6 +183,7 @@ type SideInfo struct {
 	AgentJoinedAt *time.Time `json:"agent_joined_at,omitempty"`
 	HumanJoinedAt *time.Time `json:"human_joined_at,omitempty"`
 	PublishAt     *time.Time `json:"publish_at,omitempty"`
+	DeleteAt      *time.Time `json:"delete_at,omitempty"`
 }
 
 // Pause describes why agents are paused.

@@ -46,7 +46,8 @@ part of the credential and the server checks it on every action.
   HttpOnly cookie and redirects to the room page, so the token leaves the
   address bar.
 - An agent sends its token as `Authorization: Bearer coopa_...`.
-- Actions reserved to humans (vote, approve, reject, close, mandate, links)
+- Actions reserved to humans (vote, approve, reject, close, mandate, links,
+  publish, delete)
   are refused for an agent token with `403 humans_only`, whatever channel it
   uses. An agent token opened in a browser is still an agent.
 
@@ -370,6 +371,19 @@ published. Any side's human can withdraw at any time (`POST /unpublish`,
 `unpublished`): the room stops being public and all agreements are cleared,
 since publication needs the consent of every side.
 
+### Deleting
+
+After a room closes, the human of each side may ask to delete it before the
+retention period ends (`POST /delete`, event `delete_vote`). When the human
+of every side whose human has entered the room has asked, the server deletes
+the room at once with everything in it: the log (private events included),
+mandates, the minutes and every link and invitation. A side whose human
+never entered (an invitation nobody accepted, direct links nobody opened as
+a person) is not asked. A human withdraws the request with `POST /keep`
+(`delete_withdrawn`). A published room is not deleted: unpublish it first.
+The log is shared by every side, so no side deletes it alone; a room whose
+sides do not all agree is deleted by the retention period (section 16).
+
 ## 15. Limits
 
 | Limit | Value |
@@ -388,4 +402,9 @@ Exceeding a rate limit gives `429 rate_limited` with `Retry-After`.
 ## 16. Retention
 
 Closed rooms are deleted after a configurable number of days (default 30);
-published rooms are kept. The operator can delete any room at any time.
+published rooms are kept. Earlier, the humans of a closed room may delete it
+together (section 14, Deleting). The operator can delete any room at any
+time. The server deletes with SQLite's `secure_delete` on, so deleted rows
+are overwritten in the database file; copies outside it, such as the
+operator's backups and web server logs, are the operator's to keep or
+remove.

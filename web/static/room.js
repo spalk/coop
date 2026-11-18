@@ -206,6 +206,35 @@
     if (room.close_note) text += " " + room.close_note;
     $("closed").textContent = text;
     renderPublishing();
+    renderDeleting();
+  }
+
+  function renderDeleting() {
+    const box = $("deleting");
+    box.hidden = room.phase !== "closed" || room.you.actor !== "human";
+    if (box.hidden) return;
+    const mine = room.sides.find((s) => s.label === room.you.side);
+    const asked = !!(mine && mine.delete_at);
+    const waiting = room.sides.filter((s) => s.human_joined_at && !s.delete_at).map((s) => sideName(s.label));
+    let text;
+    if (room.published_at) {
+      text = "Published rooms are kept. Unpublish the room to delete it.";
+    } else if (asked) {
+      text = "You asked to delete this room. Waiting for: " + waiting.join(", ") + ".";
+    } else {
+      const others = room.sides.filter((s) => s.delete_at).map((s) => sideName(s.label));
+      text = others.length
+        ? others.join(", ") + " asked to delete this room. If you agree, it is deleted now."
+        : "Delete the conversation, the minutes and all links now; every side has to agree.";
+    }
+    $("delete-text").textContent = text;
+    $("delete-room").hidden = asked || !!room.published_at;
+    $("keep-room").hidden = !asked;
+  }
+
+  function showDeleted() {
+    for (const id of ["closed", "publishing", "deleting", "composer", "feed"]) $(id).hidden = true;
+    $("deleted").hidden = false;
   }
 
   function renderPublishing() {
@@ -397,6 +426,8 @@
       case "publish_vote": return sideName(e.side) + " agreed to publish the room";
       case "published": return "Published: anyone can read this room";
       case "unpublished": return sideName(e.side) + " withdrew publication";
+      case "delete_vote": return sideName(e.side) + " asked to delete the room";
+      case "delete_withdrawn": return sideName(e.side) + " withdrew the request to delete the room";
       case "paused":
         if (d.kind === "budget") return "Paused: side " + d.side + " used its turn budget";
         return who(e) + " raised a hand" + (e.body ? ": " + e.body : "");
@@ -547,6 +578,12 @@
       addEvents(b.events);
       update(b.room);
     });
+    // A deleted room ends the stream and refuses the reconnect.
+    es.addEventListener("error", async () => {
+      if (es.readyState !== EventSource.CLOSED) return;
+      const res = await fetch(api, { credentials: "same-origin" }).catch(() => null);
+      if (res && (res.status === 404 || res.status === 401)) showDeleted();
+    });
   }
 
   // Actions
@@ -588,6 +625,21 @@
       if (room.published_at && !window.confirm("The room stops being public for everyone. Continue?")) return;
       await call("POST", "/unpublish", {});
     }));
+    $("delete-room").addEventListener("click", guard(async () => {
+      const last = room.sides.every((s) => !s.human_joined_at || s.delete_at || s.label === room.you.side);
+      const msg = last
+        ? "Delete this room now for every side? The conversation, the minutes and all links are deleted and cannot be restored."
+        : "Ask to delete this room for every side? When all sides agree, the conversation, the minutes and all links are deleted and cannot be restored.";
+      if (!window.confirm(msg)) return;
+      const res = await fetch(api + "/delete", { method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" }, body: "{}" });
+      let data = null;
+      try { data = await res.json(); } catch (_) { /* empty body */ }
+      if (data && data.deleted) { showDeleted(); return; }
+      if (data && data.room) update(data.room);
+      if (!res.ok) throw new Error((data && data.message) || res.statusText);
+    }));
+    $("keep-room").addEventListener("click", guard(() => call("POST", "/keep", {})));
     $("ready").addEventListener("click", guard(() => call("POST", "/ready", {})));
     $("unready").addEventListener("click", guard(() => call("POST", "/unready", {})));
 
