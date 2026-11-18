@@ -86,6 +86,16 @@
         </div>
       </section>
 
+      <section class="notice closed" id="deleting" hidden>
+        <div id="delete-text"></div>
+        <div class="row">
+          <button type="button" id="delete-room" title="Ask to delete this room now instead of at the end of the retention period. When every side agrees, the conversation, the minutes and all links are deleted for everyone and cannot be restored.">Delete everything</button>
+          <button type="button" id="keep-room" title="Withdraw your request to delete the room.">Withdraw</button>
+        </div>
+      </section>
+
+      <section class="notice closed" id="deleted" hidden>This room was deleted.</section>
+
       <main id="feed" class="feed" aria-live="polite"></main>
 
       <footer class="composer" id="composer">

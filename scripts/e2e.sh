@@ -230,6 +230,18 @@ step "admin CLI lists the rooms"
 "$BIN" rooms list --db "$DB" | grep -q "$ID" || fail "rooms list"
 ok
 
+step "both humans delete the first room: links stop working"
+call POST "/api/rooms/$ID/delete" "$TA" '{}'
+expect 403
+call POST "/api/rooms/$ID/delete" "@$WORK/a.jar" '{}'
+expect 200 .room.phase closed
+call POST "/api/rooms/$ID/delete" "@$WORK/b.jar" '{}'
+expect 200 .deleted true
+call GET "/api/rooms/$ID/minutes.md" "$TB"
+[[ $CODE == 404 || $CODE == 401 ]] || fail "minutes after delete: $CODE"
+"$BIN" rooms list --db "$DB" | grep -q "$ID" && fail "deleted room still listed"
+ok
+
 step "stop server and free the port"
 kill "$PID"
 wait "$PID" 2>/dev/null || true

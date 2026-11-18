@@ -135,6 +135,8 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/rooms/{id}/name", s.withRoom(s.rename))
 	m.HandleFunc("POST /api/rooms/{id}/publish", s.withRoom(s.publish))
 	m.HandleFunc("POST /api/rooms/{id}/unpublish", s.withRoom(s.unpublish))
+	m.HandleFunc("POST /api/rooms/{id}/delete", s.withRoom(s.deleteRoom))
+	m.HandleFunc("POST /api/rooms/{id}/keep", s.withRoom(s.keep))
 	m.HandleFunc("POST /api/rooms/{id}/agent-link", s.withRoom(s.issueAgentLink))
 	m.HandleFunc("POST /api/rooms/{id}/sides/{side}/invitation", s.withRoom(s.issueInvitation))
 	m.HandleFunc("POST /api/rooms/{id}/sides/{side}/links", s.withRoom(s.issueSideLinks))

@@ -240,6 +240,10 @@ func buildProtocol(st Status, evs []Event) Protocol {
 			line(e, "publish", "Published: anyone can read this room")
 		case EventUnpublished:
 			line(e, "publish", side(e.Side)+" withdrew publication")
+		case EventDeleteVote:
+			line(e, "delete", side(e.Side)+" asked to delete the room")
+		case EventDeleteWithdrawn:
+			line(e, "delete", side(e.Side)+" withdrew the request to delete the room")
 		}
 	}
 

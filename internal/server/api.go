@@ -443,6 +443,32 @@ func (s *Server) unpublish(w http.ResponseWriter, r *http.Request, p room.Princi
 	act(s, w, r, p, func(struct{}) error { return s.svc.Unpublish(p) })
 }
 
+// deleteRoom answers {"deleted": true} when this request deleted the room
+// (there is no room status left to show), else the room as for other actions.
+func (s *Server) deleteRoom(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	var req struct{}
+	if err := readJSON(w, r, &req); err != nil {
+		writeError(w, err)
+		return
+	}
+	deleted, err := s.svc.Delete(p)
+	if err != nil {
+		s.ruleError(w, p, err)
+		return
+	}
+	if deleted {
+		writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+		return
+	}
+	if st, ok := s.status(w, p); ok {
+		writeJSON(w, http.StatusOK, map[string]any{"room": st})
+	}
+}
+
+func (s *Server) keep(w http.ResponseWriter, r *http.Request, p room.Principal) {
+	act(s, w, r, p, func(struct{}) error { return s.svc.Keep(p) })
+}
+
 func (s *Server) vote(w http.ResponseWriter, r *http.Request, p room.Principal) {
 	seq, err := strconv.ParseInt(r.PathValue("seq"), 10, 64)
 	if err != nil {

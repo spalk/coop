@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS sides (
   agent_joined_at  INTEGER,
   human_joined_at  INTEGER,
   publish_at       INTEGER,
+  delete_at        INTEGER,
   PRIMARY KEY (room_id, idx)
 );
 

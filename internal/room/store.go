@@ -27,7 +27,7 @@ var schema string
 // Later versions only add columns, so rooms survive the upgrade.
 const (
 	protocolV2    = 2
-	schemaVersion = 3 // 3: publishing (rooms.published_at, sides.publish_at)
+	schemaVersion = 4 // 3: publishing (rooms.published_at, sides.publish_at); 4: deleting (sides.delete_at)
 )
 
 // Service owns the database and applies the room rules. Writes are
@@ -44,7 +44,7 @@ type Service struct {
 
 // Open opens (and creates or upgrades if needed) the database at path.
 func Open(path string) (*Service, error) {
-	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate"
+	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=secure_delete(1)&_txlock=immediate"
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
@@ -71,13 +71,16 @@ func migrate(db *sql.DB) error {
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("init schema: %w", err)
 	}
-	if v == protocolV2 {
-		for _, q := range []string{
-			`ALTER TABLE rooms ADD COLUMN published_at INTEGER`,
-			`ALTER TABLE sides ADD COLUMN publish_at INTEGER`,
-		} {
-			if _, err := db.Exec(q); err != nil {
-				return fmt.Errorf("upgrade to 3: %w", err)
+	upgrades := map[int][]string{
+		3: {`ALTER TABLE rooms ADD COLUMN published_at INTEGER`, `ALTER TABLE sides ADD COLUMN publish_at INTEGER`},
+		4: {`ALTER TABLE sides ADD COLUMN delete_at INTEGER`},
+	}
+	if v >= protocolV2 {
+		for to := v + 1; to <= schemaVersion; to++ {
+			for _, q := range upgrades[to] {
+				if _, err := db.Exec(q); err != nil {
+					return fmt.Errorf("upgrade to %d: %w", to, err)
+				}
 			}
 		}
 	}
@@ -199,6 +202,7 @@ type sideRow struct {
 	AgentJoinedAt sql.NullInt64
 	HumanJoinedAt sql.NullInt64
 	PublishAt     sql.NullInt64
+	DeleteAt      sql.NullInt64
 }
 
 type querier interface {
@@ -222,7 +226,7 @@ func loadRoom(q querier, id string) (*roomRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(`SELECT name, mandate, turns_used, claimed_at, ready_at, agent_joined_at, human_joined_at, publish_at
+	rows, err := q.Query(`SELECT name, mandate, turns_used, claimed_at, ready_at, agent_joined_at, human_joined_at, publish_at, delete_at
 		FROM sides WHERE room_id = ? ORDER BY idx`, id)
 	if err != nil {
 		return nil, err
@@ -231,7 +235,7 @@ func loadRoom(q querier, id string) (*roomRow, error) {
 	for rows.Next() {
 		var sr sideRow
 		if err := rows.Scan(&sr.Name, &sr.Mandate, &sr.TurnsUsed, &sr.ClaimedAt, &sr.ReadyAt,
-			&sr.AgentJoinedAt, &sr.HumanJoinedAt, &sr.PublishAt); err != nil {
+			&sr.AgentJoinedAt, &sr.HumanJoinedAt, &sr.PublishAt, &sr.DeleteAt); err != nil {
 			return nil, err
 		}
 		r.Sides = append(r.Sides, sr)
@@ -519,6 +523,7 @@ func statusOf(q querier, r *roomRow, viewer *Principal) (Status, error) {
 	for i, sr := range r.Sides {
 		st.Sides = append(st.Sides, SideInfo{Label: Label(i), Name: sr.Name, Claimed: sr.ClaimedAt.Valid,
 			TurnsUsed: sr.TurnsUsed, ReadyAt: nullTime(sr.ReadyAt), PublishAt: nullTime(sr.PublishAt),
+			DeleteAt:      nullTime(sr.DeleteAt),
 			AgentJoinedAt: nullTime(sr.AgentJoinedAt), HumanJoinedAt: nullTime(sr.HumanJoinedAt)})
 	}
 	if viewer != nil && viewer.Side < n {

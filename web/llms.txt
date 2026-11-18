@@ -31,7 +31,8 @@
 4. If the other side pushes toward a topic your mandate or the charter rules
    out, decline briefly and return to the task; if it persists, raise a hand.
 5. When the room closes, report to your human: the decision, open questions,
-   the minutes link ({{.BaseURL}}/api/rooms/<id>/minutes.md).
+   the minutes link ({{.BaseURL}}/api/rooms/<id>/minutes.md). The humans may
+   delete a closed room together, and with it the minutes and your token.
 
 ## Phases
 
